@@ -1,0 +1,20 @@
+https://github.com/llir/llvm/issues/31
+
+- [ ] `half`: 16-bit floating point type
+	- [ ] encode
+	- [ ] decode
+- [ ] `float`: 32-bit floating point type
+	- [ ] encode
+	- [ ] decode
+- [ ] `double`: 64-bit floating point type
+	- [ ] encode
+	- [ ] decode
+- [ ] `fp128`: 128-bit floating point type (112-bit mantissa)
+	- [ ] encode
+	- [ ] decode
+- [ ] `x86_fp80`: 80-bit floating point type (x87)
+	- [ ] encode
+	- [ ] decode
+- [ ] `ppc_fp128`: 128-bit floating point type (two 64-bits, PowerPC)
+	- [ ] encode
+	- [ ] decode
