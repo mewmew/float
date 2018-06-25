@@ -4,11 +4,11 @@ https://github.com/llir/llvm/issues/31
 	- [ ] encode
 	- [ ] decode
 - [ ] `float`: 32-bit floating point type
-	- [ ] encode
-	- [ ] decode
+	- [x] encode: https://golang.org/pkg/math/#Float32bits
+	- [x] decode: https://golang.org/pkg/math/#Float32frombits
 - [ ] `double`: 64-bit floating point type
-	- [ ] encode
-	- [ ] decode
+	- [x] encode: https://golang.org/pkg/math/#Float64bits
+	- [x] decode: https://golang.org/pkg/math/#Float64frombits
 - [ ] `fp128`: 128-bit floating point type (112-bit mantissa)
 	- [ ] encode
 	- [ ] decode
