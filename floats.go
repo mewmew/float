@@ -18,6 +18,9 @@ func New() *Float {
 
 func (f *Float) Float64() (float64, big.Accuracy) {
 	if f.NaN {
+		if f.Signbit() {
+			return -math.NaN(), big.Exact
+		}
 		return math.NaN(), big.Exact
 	}
 	return f.Float.Float64()

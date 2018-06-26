@@ -53,8 +53,8 @@ func (f Float) Float32() float32 {
 // Float64 returns the float64 representation of f.
 func (f Float) Float64() float64 {
 	x := f.big()
-	y, acc := x.Float64()
-	fmt.Println("acc:", acc)
+	// TODO: Check accuracy?
+	y, _ := x.Float64()
 	return y
 }
 
@@ -67,6 +67,15 @@ func (f Float) big() *floats.Float {
 	x.SetPrec(11)
 	x.SetMode(big.ToNearestEven)
 	// ref: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Exponent_encoding
+
+	// 0b00001 - 0b11110
+	// Normalized number.
+	//
+	//    (-1)^signbit * 2^(exp-15) * 1.mant_2
+	lead := 1
+	const bias = 15
+	exponent := int(exp) - bias
+
 	switch exp {
 	// 0b11111
 	case 0x1F:
@@ -91,30 +100,19 @@ func (f Float) big() *floats.Float {
 			}
 			return x
 		}
-	}
-
-	// 0b00001 - 0b11110
-	// Normalized number.
-	//
-	//    (-1)^signbit * 2^(exp-15) * 1.mant_2
-	lead := 1
-	const bias = 15
-	exponent := int(exp) - bias
-	// 0b00000
-	if exp == 0 {
 		// Denormalized number.
 		//
 		//    (-1)^signbit * 2^(-14) * 0.mant_2
 		lead = 0
 		exponent = -14
 	}
+
 	// number = [ sign ] [ prefix ] mantissa [ exponent ] | infinity .
 	sign := "+"
 	if signbit {
 		sign = "-"
 	}
 	s := fmt.Sprintf("%s0b%d.%010bp%d", sign, lead, mant, exponent)
-	fmt.Println("s:", s)
 	_, _, err := x.Parse(s, 0)
 	if err != nil {
 		log.Fatalf("%+v", err)
