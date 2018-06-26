@@ -8,3 +8,7 @@
 @f_neg_0_dot_5 = global half 0xHB800
 @f_pos_1_dot_5 = global half 0xH3E00
 @f_neg_1_dot_5 = global half 0xHBE00
+@f_pos_2_dot_5 = global half 0xH4100
+@f_neg_2_dot_5 = global half 0xHC100
+@f_pos_3_dot_14 = global half 0xH4248
+@f_neg_3_dot_14 = global half 0xHC248
