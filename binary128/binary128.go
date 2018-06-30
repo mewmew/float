@@ -4,6 +4,8 @@
 // https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format
 package binary128
 
+import "math"
+
 // Float is a floating-point number in IEEE 754 quadruple precision format.
 type Float struct {
 	// Sign, exponent and fraction.
@@ -36,19 +38,24 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 		var a uint64
 		if mant == 0 {
 			// +-Inf
-			a = 0x7FF0000000000000
+			a = 0x7FFF000000000000
 			if sign {
-				a = 0xFFF0000000000000
+				a = 0xFFFF000000000000
 			}
 			return Float{a:a, b:0}, true
 		}
 		// +-NaN
-		nan := math.NaN()
-		if sign {
-			nan = -math.NaN()
-		}
 
-		return Float{a:math.Float64bits(nan), b:0}, true
+		a = 0
+		if sign {
+			a = 0x8000000000000000
+		}
+		a = a | 0x7FFF000000000000
+
+		newMant := uint64(mant) << uint64(25)
+		a = a | newMant
+
+		return Float{a:a, b:0}, true
 		// 0b00000000
 	case 0x00:
 		if mant == 0 {
