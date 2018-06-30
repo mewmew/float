@@ -24,7 +24,59 @@ func NewFromBits(a, b uint64) Float {
 // NewFromFloat32 returns the nearest quadruple precision floating-point number
 // for x and a bool indicating whether f represents x exactly.
 func NewFromFloat32(x float32) (f Float, exact bool) {
-	panic("not yet implemented")
+	intRep := math.Float32bits(x)
+	sign := intRep & 0x80000000 != 0
+	mant := intRep & 0x7fffff
+	exp := intRep & 0x7f800000 >> 23
+
+	switch exp {
+	// 0b11111111
+	case 0xFF:
+		// NaN or Inf
+		var a uint64
+		if mant == 0 {
+			// +-Inf
+			a = 0x7FF0000000000000
+			if sign {
+				a = 0xFFF0000000000000
+			}
+			return Float{a:a, b:0}, true
+		}
+		// +-NaN
+		nan := math.NaN()
+		if sign {
+			nan = -math.NaN()
+		}
+
+		return Float{a:math.Float64bits(nan), b:0}, true
+		// 0b00000000
+	case 0x00:
+		if mant == 0 {
+			// +-Zero
+			var a uint64
+			a = 0x0000000000000000
+			if sign {
+				a = 0x8000000000000000
+			}
+			return Float{a:a, b:0}, true
+		}
+	}
+
+	var a uint64 = 0
+	if sign {
+		a = 0x8000000000000000
+	}
+
+	var newExp uint64
+	newExp = uint64(exp - 127 + 1023) << uint64(52)
+	a = a | newExp
+
+	var newMant uint64
+	newMant = uint64(mant) << uint64(41)
+
+	a = a | newMant
+
+	return Float{a: a, b: 0}, true
 }
 
 // NewFromFloat64 returns the nearest quadruple precision floating-point number
