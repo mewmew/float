@@ -1,11 +1,9 @@
-package binary16_test
+package binary16
 
 import (
 	"math"
 	"math/big"
 	"testing"
-
-	"github.com/mewmew/floats/binary16"
 )
 
 func TestNewFromBits(t *testing.T) {
@@ -62,7 +60,7 @@ func TestNewFromBits(t *testing.T) {
 	}
 
 	for _, g := range golden {
-		f := binary16.NewFromBits(g.bits)
+		f := NewFromBits(g.bits)
 		got := f.Float64()
 		wantBits := math.Float64bits(g.want)
 		gotBits := math.Float64bits(got)
