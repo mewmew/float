@@ -1,18 +1,18 @@
 package binary128
 
 import (
-	"testing"
 	"math"
-	"math/big"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromFloat32(t *testing.T) {
 	golden := []struct {
 		uint32Float uint32
-		a uint64
-		b uint64
-		str string
+		a           uint64
+		b           uint64
+		str         string
 	}{
 		// Special numbers.
 
@@ -27,9 +27,7 @@ func TestNewFromFloat32(t *testing.T) {
 		// +0
 		{uint32Float: 0x00000000, a: 0, b: 0, str: "+0 not equal"},
 		// -0
-		{uint32Float: 0x80000000, a: 0x8000000000000000, b :0, str: "-0 not equal"},
-
-
+		{uint32Float: 0x80000000, a: 0x8000000000000000, b: 0, str: "-0 not equal"},
 	}
 
 	for _, g := range golden {
@@ -38,14 +36,4 @@ func TestNewFromFloat32(t *testing.T) {
 		assert.Equal(t, g.a, a, g.str)
 		assert.Equal(t, g.b, b, g.str)
 	}
-}
-
-func float64FromString(s string) float64 {
-	x, _, err := big.ParseFloat(s, 0, 53, big.ToNearestEven)
-	if err != nil {
-		panic(err)
-	}
-	// TODO: Check accuracy?
-	y, _ := x.Float64()
-	return y
 }
