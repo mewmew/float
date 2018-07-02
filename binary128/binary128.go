@@ -27,7 +27,7 @@ func NewFromBits(a, b uint64) Float {
 // for x and a bool indicating whether f represents x exactly.
 func NewFromFloat32(x float32) (f Float, exact bool) {
 	intRep := math.Float32bits(x)
-	sign := intRep & 0x80000000 != 0
+	sign := intRep&0x80000000 != 0
 	mant := intRep & 0x7fffff
 	exp := intRep & 0x7f800000 >> 23
 
@@ -42,7 +42,7 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 			if sign {
 				a = 0xFFFF000000000000
 			}
-			return Float{a:a, b:0}, true
+			return Float{a: a, b: 0}, true
 		}
 		// +-NaN
 
@@ -55,32 +55,28 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 		newMant := uint64(mant) << uint64(25)
 		a = a | newMant
 
-		return Float{a:a, b:0}, true
+		return Float{a: a, b: 0}, true
 		// 0b00000000
 	case 0x00:
 		if mant == 0 {
 			// +-Zero
 			var a uint64
-			a = 0x0000000000000000
 			if sign {
 				a = 0x8000000000000000
 			}
-			return Float{a:a, b:0}, true
+			return Float{a: a, b: 0}, true
 		}
 	}
 
-	var a uint64 = 0
+	var a uint64
 	if sign {
 		a = 0x8000000000000000
 	}
 
-	var newExp uint64
-	newExp = uint64(exp - 127 + 1023) << uint64(52)
+	newExp := uint64(exp-127+1023) << uint64(52)
 	a = a | newExp
 
-	var newMant uint64
-	newMant = uint64(mant) << uint64(41)
-
+	newMant := uint64(mant) << uint64(41)
 	a = a | newMant
 
 	return Float{a: a, b: 0}, true
