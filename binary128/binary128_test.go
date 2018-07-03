@@ -28,6 +28,14 @@ func TestNewFromFloat32(t *testing.T) {
 		{uint32Float: 0x00000000, a: 0, b: 0, str: "+0 not equal"},
 		// -0
 		{uint32Float: 0x80000000, a: 0x8000000000000000, b: 0, str: "-0 not equal"},
+
+		// Normalized numbers.
+		{uint32Float: math.Float32bits(0.5), a: 0x3FFE000000000000, b: 0, str: "+0.5 not equal"},
+		{uint32Float: math.Float32bits(-0.5), a: 0xBFFE000000000000, b: 0, str: "-0.5 not equal"},
+		{uint32Float: math.Float32bits(1.5), a: 0x3FFF800000000000, b: 0, str: "+1.5 not equal"},
+		{uint32Float: math.Float32bits(-1.5), a: 0xBFFF800000000000, b: 0, str: "-1.5 not equal"},
+		{uint32Float: math.Float32bits(2.5), a: 0x4000400000000000, b: 0, str: "+2.5 not equal"},
+		{uint32Float: math.Float32bits(-2.5), a: 0xC000400000000000, b: 0, str: "-2.5 not equal"},
 	}
 
 	for _, g := range golden {
