@@ -115,7 +115,7 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 		}
 		a = a | 0x7FFF000000000000
 
-		newMant := uint64(leftMant)
+		newMant := leftMant
 		a |= newMant
 
 		return Float{a: a, b: b}, true
@@ -135,11 +135,10 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 		a = 0x8000000000000000
 	}
 
-	newExp := uint64(exp-1023+16383) << 48
+	newExp := (exp - 1023 + 16383) << 48
 	a |= newExp
 
-	newMant := uint64(leftMant)
-	a |= newMant
+	a |= leftMant
 
 	return Float{a: a, b: b}, true
 }
