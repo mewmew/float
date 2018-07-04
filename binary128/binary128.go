@@ -87,7 +87,60 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 // NewFromFloat64 returns the nearest quadruple precision floating-point number
 // for x and a bool indicating whether f represents x exactly.
 func NewFromFloat64(x float64) (f Float, exact bool) {
-	panic("not yet implemented")
+	intRep := math.Float64bits(x)
+	sign := intRep&0x8000000000000000 != 0
+	exp := intRep & 0x7FF0000000000000 >> 52
+	mant := intRep & 0xFFFFFFFFFFFFF
+	leftMant := mant & 0xFFFFFFFFFFFF0 >> 4
+	var a uint64
+	b := mant & 0xF << 60
+
+	switch exp {
+	// 0b11111111
+	case 0x7FF:
+		// NaN or Inf
+		if mant == 0 {
+			// +-Inf
+			a = 0x7FFF000000000000
+			if sign {
+				a = 0xFFFF000000000000
+			}
+			return Float{a: a, b: b}, true
+		}
+		// +-NaN
+
+		a = 0
+		if sign {
+			a = 0x8000000000000000
+		}
+		a = a | 0x7FFF000000000000
+
+		newMant := leftMant
+		a |= newMant
+
+		return Float{a: a, b: b}, true
+		// 0b00000000
+	case 0x0:
+		if mant == 0 {
+			// +-Zero
+			var a uint64
+			if sign {
+				a = 0x8000000000000000
+			}
+			return Float{a: a, b: b}, true
+		}
+	}
+
+	if sign {
+		a = 0x8000000000000000
+	}
+
+	newExp := (exp - 1023 + 16383) << 48
+	a |= newExp
+
+	a |= leftMant
+
+	return Float{a: a, b: b}, true
 }
 
 // Bits returns the IEEE 754 quadruple precision binary representation of f.

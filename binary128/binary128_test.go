@@ -45,3 +45,42 @@ func TestNewFromFloat32(t *testing.T) {
 		assert.Equal(t, g.b, b, g.str)
 	}
 }
+
+func TestNewFromFloat64(t *testing.T) {
+	golden := []struct {
+		uint64Float uint64
+		a           uint64
+		b           uint64
+		str         string
+	}{
+		// Special numbers.
+
+		// +NaN
+		{uint64Float: 0x7FF8000000000000, a: 0x7fff800000000000, b: 0, str: "+Nan not equal"},
+		// -NaN
+		{uint64Float: 0xFFF8000000000000, a: 0xffff800000000000, b: 0, str: "-Nan not equal"},
+		// +Inf
+		{uint64Float: 0x7FF0000000000000, a: 0x7fff000000000000, b: 0, str: "+Inf not equal"},
+		// -Inf
+		{uint64Float: 0xFFF0000000000000, a: 0xffff000000000000, b: 0, str: "-Inf not equal"},
+		// +0
+		{uint64Float: 0x0, a: 0, b: 0, str: "+0 not equal"},
+		// -0
+		{uint64Float: 0x8000000000000000, a: 0x8000000000000000, b: 0, str: "-0 not equal"},
+
+		// Normalized numbers.
+		{uint64Float: math.Float64bits(0.5), a: 0x3FFE000000000000, b: 0, str: "+0.5 not equal"},
+		{uint64Float: math.Float64bits(-0.5), a: 0xBFFE000000000000, b: 0, str: "-0.5 not equal"},
+		{uint64Float: math.Float64bits(1.5), a: 0x3FFF800000000000, b: 0, str: "+1.5 not equal"},
+		{uint64Float: math.Float64bits(-1.5), a: 0xBFFF800000000000, b: 0, str: "-1.5 not equal"},
+		{uint64Float: math.Float64bits(2.5), a: 0x4000400000000000, b: 0, str: "+2.5 not equal"},
+		{uint64Float: math.Float64bits(-2.5), a: 0xC000400000000000, b: 0, str: "-2.5 not equal"},
+	}
+
+	for _, g := range golden {
+		f, _ := NewFromFloat64(math.Float64frombits(g.uint64Float))
+		a, b := f.Bits()
+		assert.Equal(t, g.a, a, g.str)
+		assert.Equal(t, g.b, b, g.str)
+	}
+}
