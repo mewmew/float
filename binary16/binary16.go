@@ -19,13 +19,13 @@ type Float struct {
 	//    1 bit:   sign
 	//    5 bits:  exponent
 	//    10 bits: fraction
-	a uint16
+	bits uint16
 }
 
 // NewFromBits returns the floating-point number corresponding to the IEEE 754
 // half precision binary representation.
-func NewFromBits(a uint16) Float {
-	return Float{a: a}
+func NewFromBits(bits uint16) Float {
+	return Float{bits: bits}
 }
 
 // NewFromFloat32 returns the nearest half precision floating-point number for x
@@ -42,7 +42,7 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 
 // Bits returns the IEEE 754 half precision binary representation of f.
 func (f Float) Bits() uint16 {
-	return f.a
+	return f.bits
 }
 
 // Float32 returns the float32 representation of f.
@@ -123,17 +123,17 @@ func (f Float) big() *floats.Float {
 // signbit reports whether f is negative or negative 0.
 func (f Float) signbit() bool {
 	// 0b1000000000000000
-	return f.a&0x8000 != 0
+	return f.bits&0x8000 != 0
 }
 
 // exp returns the exponent of f.
 func (f Float) exp() uint16 {
 	// 0b0111110000000000
-	return f.a & 0x7C00 >> 10
+	return f.bits & 0x7C00 >> 10
 }
 
 // mant returns the mantissa of f.
 func (f Float) mant() uint16 {
 	// 0b0000001111111111
-	return f.a & 0x03FF
+	return f.bits & 0x03FF
 }
