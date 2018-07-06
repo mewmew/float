@@ -18,7 +18,7 @@ type Float struct {
 
 // NewFromBits returns the floating-point number corresponding to the IBM
 // extended double representation.
-func NewFromBits(a uint16, b uint64) Float {
+func NewFromBits(a, b uint64) Float {
 	return Float{a: a, b: b}
 }
 
