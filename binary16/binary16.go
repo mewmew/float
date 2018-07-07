@@ -95,7 +95,6 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	// Exponent and mantissa.
 	mant := &big.Float{}
 	exponent := x.MantExp(mant)
-	// TODO: Check overflow and set exact.
 	fmt.Println("exponent:", exponent)
 	exp := exponent - 1 + bias
 	// 0b11111
@@ -111,16 +110,12 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	mant.SetMantExp(mant, precision)
 	fmt.Println("mant:", mant)
 	if !mant.IsInt() {
-		// TODO: handle truncation.
-		panic("truncation")
+		exact = false
 	}
 	mantissa, _ := mant.Uint64()
 	fmt.Println("mantissa:", mantissa)
 	mantissa &^= 1024 // clear implicit lead bit.
 	fmt.Println("mantissa:", mantissa)
-
-	//m, _ := mant.Rat(nil)
-	//fmt.Println("m:", m)
 
 	// 0b11111111111 (including implicit lead bit)
 	exact = exact && (mantissa&^0x7FF) == 0
