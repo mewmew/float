@@ -63,7 +63,6 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 // NewFromBig returns the nearest half precision floating-point number for x and
 // a bool indicating whether f represents x exactly.
 func NewFromBig(x *big.Float) (f Float, exact bool) {
-	fmt.Println("x:", x)
 	zero := &big.Float{}
 	switch {
 	// +-Inf
@@ -89,18 +88,14 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	if x.Signbit() {
 		bits |= 0x8000
 	}
-	fmt.Println("sign:", x.Signbit())
-	fmt.Printf("bits: %04X\n", bits)
 
 	// Exponent and mantissa.
 	mant := &big.Float{}
 	exponent := x.MantExp(mant)
-	fmt.Println("exponent:", exponent)
 	exp := exponent - 1 + bias
 
 	// Handle denormalized values.
 	if exp < 0 {
-		fmt.Println("mant:", mant)
 		exact = true
 		if exponent < -23 {
 			exponent = -23
@@ -110,9 +105,7 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 		if mant.Signbit() {
 			mant.Neg(mant)
 		}
-		fmt.Println("mant:", mant)
 		v, _ := mant.Uint64()
-		fmt.Printf("v: %03X\n", v)
 		bits |= uint16(v)
 		return Float{bits: bits}, exact
 	}
@@ -120,30 +113,21 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	// 0b11111
 	exact = (exp &^ 0x1F) == 0
 	bits |= uint16(exp&0x1F) << 10
-	fmt.Println("exp:", exp)
-	fmt.Printf("bits: %04X\n", bits)
 
-	fmt.Println("mant:", mant)
 	if mant.Signbit() {
 		mant.Neg(mant)
 	}
 	mant.SetMantExp(mant, precision)
-	fmt.Println("mant:", mant)
 	if !mant.IsInt() {
 		exact = false
 	}
 	mantissa, _ := mant.Uint64()
-	fmt.Println("mantissa:", mantissa)
 	mantissa &^= 1024 // clear implicit lead bit.
-	fmt.Println("mantissa:", mantissa)
 
 	// 0b11111111111 (including implicit lead bit)
 	exact = exact && (mantissa&^0x7FF) == 0
 	mantissa &= 0x7FF
 	bits |= uint16(mantissa)
-	fmt.Println("mantissa:", mantissa)
-	fmt.Printf("bits: %04X\n", bits)
-	fmt.Println()
 	return Float{bits: bits}, exact
 }
 
