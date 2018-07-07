@@ -105,6 +105,9 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	fmt.Printf("bits: %04X\n", bits)
 
 	fmt.Println("mant:", mant)
+	if mant.Signbit() {
+		mant.Neg(mant)
+	}
 	mant.SetMantExp(mant, precision)
 	fmt.Println("mant:", mant)
 	if !mant.IsInt() {
