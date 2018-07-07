@@ -67,7 +67,75 @@ func TestNewFromBits(t *testing.T) {
 		wantBits := math.Float64bits(g.want)
 		gotBits := math.Float64bits(got)
 		if wantBits != gotBits {
-			t.Errorf("0x%04X: number mismatch; expected 0x%08X (%v), got 0x%08X (%v)", g.bits, wantBits, g.want, gotBits, got)
+			t.Errorf("0x%04X: number mismatch; expected 0x%04X (%v), got 0x%04X (%v)", g.bits, wantBits, g.want, gotBits, got)
+		}
+	}
+}
+
+func TestNewFromFloat64(t *testing.T) {
+	golden := []struct {
+		in    float64
+		exact bool
+		want  uint16
+	}{
+		// Special numbers.
+
+		// +NaN
+		/*
+			{in: math.NaN(), exact: true, want: 0x7E00},
+			// -NaN
+			{in: -math.NaN(), exact: true, want: 0xFE00},
+			// +Inf
+			{in: math.Inf(1), exact: true, want: 0x7C00},
+			// -Inf
+			{in: math.Inf(-1), exact: true, want: 0xFC00},
+			// +0
+			{in: 0.0, exact: true, want: 0x0000},
+			// -0
+			{in: math.Copysign(0.0, -1), exact: true, want: 0x8000},
+		*/
+
+		// From https://reviews.llvm.org/rL237161
+
+		// Normalized numbers.
+		{in: 0.5, exact: true, want: 0x3800},
+		{in: -0.5, exact: true, want: 0xB800},
+		{in: 1.5, exact: true, want: 0x3E00},
+		{in: -1.5, exact: true, want: 0xBE00},
+		{in: 2.5, exact: true, want: 0x4100},
+		{in: -2.5, exact: true, want: 0xC100},
+
+		// Denormalized numbers.
+		{in: float64FromString("0x1.0p-20"), exact: true, want: 0x0010},
+		{in: float64FromString("0x1.0p-24"), exact: true, want: 0x0001},
+		{in: float64FromString("-0x1.0p-24"), exact: true, want: 0x8001},
+		//{in: float64FromString("0x1.5p-25"), exact: true, want: 0x0001},
+
+		// Rounding.
+		// TODO: Handle rounding.
+		//{in: 3.14, exact: true, want: 0x4248},
+		//{in: -3.14, exact: true, want: 0xC248},
+		//{in: 3.1415926535, exact: true, want: 0x4248},
+		//{in: -3.1415926535, exact: true, want: 0xC248},
+		//{in: float64FromString("0x1.987124876876324p+100"), exact: true, want: 0x7C00},
+		{in: float64FromString("0x1.988p+12"), exact: true, want: 0x6E62},
+		{in: float64FromString("0x1.0p+0"), exact: true, want: 0x3C00},
+		{in: float64FromString("0x1.0p-14"), exact: true, want: 0x0400},
+		// rounded to zero
+		//{in: float64FromString("0x1.0p-25"), exact: true, want: 0x0000},
+		//{in: float64FromString("-0x1.0p-25"), exact: true, want: 0x8000},
+		// max (precise)
+		{in: 65504.0, exact: true, want: 0x7BFF},
+	}
+
+	for _, g := range golden {
+		f, exact := NewFromFloat64(g.in)
+		if g.exact != exact {
+			t.Errorf("%v: exact mismatch; expected %v, got %v", g.in, g.exact, exact)
+		}
+		got := f.Bits()
+		if g.want != got {
+			t.Errorf("%v: number mismatch; expected 0x%04X, got 0x%04X", g.in, g.want, got)
 		}
 	}
 }

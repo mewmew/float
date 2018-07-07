@@ -6,11 +6,18 @@ package binary16
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/big"
+	"strconv"
+	"strings"
+)
 
-	"github.com/mewmew/floats"
+const (
+	// precision specifies the number of bits in the mantissa (including the
+	// implicit lead bit).
+	precision = 11
+	// exponent bias.
+	bias = 15
 )
 
 // Float is a floating-point number in IEEE 754 half precision format.
@@ -32,169 +39,84 @@ func NewFromBits(bits uint16) Float {
 // NewFromFloat32 returns the nearest half precision floating-point number for x
 // and a bool indicating whether f represents x exactly.
 func NewFromFloat32(x float32) (f Float, exact bool) {
-	intRep := math.Float32bits(x)
-	sign := intRep&0x80000000 != 0
-	mant := intRep & 0x7fffff
-	exp := int32(intRep & 0x7f800000 >> 23)
-
-	var mantTruncMask uint32 = 0x7FE000
-	var mantShift uint32 = 13
-
-	switch exp {
-	// 0b11111
-	case 0xFF:
-		// NaN or Inf
-		var a uint16
-		if mant == 0 {
-			// +-Inf
-			a = 0x7C00
-			if sign {
-				a = 0xFC00
-			}
-			return Float{bits: a}, true
-		}
-		// +-NaN
-
-		a = 0
-		if sign {
-			a = 0x8000
-		}
-		a = a | 0x7C00
-
-		truncMant := mant & mantTruncMask
-		exact := true
-		if mant-truncMant > 0 {
-			exact = false
-		}
-
-		newMant := uint16(truncMant >> mantShift)
-		a = a | newMant
-
-		return Float{bits: a}, exact
-		// 0b00000000
-	case 0x00:
-		if mant == 0 {
-			// +-Zero
-			var a uint16
-			if sign {
-				a = 0x8000
-			}
-			return Float{bits: a}, true
-		}
-	}
-
-	var a uint16
-	if sign {
-		a = 0x8000
-	}
-
-	expVal := exp - 127
-	if expVal > 16 { // Inf with not exact
-		a |= 0x7C00
-		return Float{bits: a}, false
-	}
-
-	if expVal < -16 { // Zero with not exact
-		return Float{bits: a}, false
-	}
-
-	truncMant := mant & mantTruncMask
-	exact = true
-	if mant-truncMant > 0 {
-		exact = false
-	}
-
-	newMant := uint16(truncMant >> mantShift)
-	a = a | newMant
-
-	newExp := uint16(expVal+15) << 10
-	a |= newExp
-
-	return Float{bits: a}, exact
+	y := float64(x)
+	f, exact = NewFromFloat64(y)
+	return f, exact && x == float32(y)
 }
 
 // NewFromFloat64 returns the nearest half precision floating-point number for x
 // and a bool indicating whether f represents x exactly.
 func NewFromFloat64(x float64) (f Float, exact bool) {
-	intRep := math.Float64bits(x)
-	sign := intRep&0x8000000000000000 != 0
-	exp := int64(intRep & 0x7FF0000000000000 >> 52)
-	mant := intRep & 0xFFFFFFFFFFFFF
+	// +-NaN
+	switch {
+	case math.IsNaN(x):
+		if math.Signbit(x) {
+			return Float{bits: 0xFE00}, true
+		}
+		return Float{bits: 0x7E00}, true
+	}
+	y := big.NewFloat(x)
+	y.SetPrec(precision)
+	y.SetMode(big.ToNearestEven)
+	// TODO: check accuracy after setting precision?
+	return NewFromBig(y)
+}
 
-	var mantTruncMask uint64 = 0xFFC0000000000
-	var mantShift uint64 = 42
+// NewFromBig returns the nearest half precision floating-point number for x and
+// a bool indicating whether f represents x exactly.
+func NewFromBig(x *big.Float) (f Float, exact bool) {
+	zero := &big.Float{}
+	switch {
+	// +-Inf
+	case x.IsInf():
+		if x.Signbit() {
+			// -Inf
+			return Float{bits: 0xFC00}, true
+		}
+		// +Inf
+		return Float{bits: 0x7C00}, true
+	// +-zero
+	case x.Cmp(zero) == 0:
+		// -zero
+		if x.Signbit() {
+			return Float{bits: 0x8000}, true
+		}
+		// +zero
+		return Float{bits: 0x0000}, true
+	}
 
-	switch exp {
+	// Sign
+	var bits uint16
+	if x.Signbit() {
+		bits |= 0x8000
+	}
+
+	// Exponent and mantissa.
+	mant := &big.Float{}
+	exp := x.MantExp(mant)
 	// 0b11111
-	case 0x7FF:
-		// NaN or Inf
-		var a uint16
-		if mant == 0 {
-			// +-Inf
-			a = 0x7C00
-			if sign {
-				a = 0xFC00
-			}
-			return Float{bits: a}, true
-		}
-		// +-NaN
-
-		a = 0
-		if sign {
-			a = 0x8000
-		}
-		a = a | 0x7C00
-
-		truncMant := mant & mantTruncMask
-		exact := true
-		if mant-truncMant > 0 {
-			exact = false
-		}
-
-		newMant := uint16(truncMant >> mantShift)
-		a = a | newMant
-
-		return Float{bits: a}, exact
-		// 0b00000000
-	case 0x00:
-		if mant == 0 {
-			// +-Zero
-			var a uint16
-			if sign {
-				a = 0x8000
-			}
-			return Float{bits: a}, true
-		}
+	exact = (exp &^ 0x1F) == 0
+	exponent := uint16(exp&0x1F) << 10
+	bits |= exponent
+	s := mant.Text('b', -1)
+	pos := strings.IndexByte(s, 'p')
+	if pos == -1 {
+		panic(fmt.Sprintf("unable to locate exponent position 'p' in %q", s))
 	}
-
-	var a uint16
-	if sign {
-		a = 0x8000
+	s = s[:pos]
+	if strings.HasPrefix(s, "-") {
+		s = s[len("-"):]
 	}
-
-	exp = exp - 1023
-	if exp > 16 { // Inf with not exact
-		a |= 0x7C00
-		return Float{bits: a}, false
+	mantissa, err := strconv.Atoi(s)
+	if err != nil {
+		panic(err)
 	}
-
-	if exp < -16 { // Zero with not exact
-		return Float{bits: a}, false
-	}
-
-	truncMant := mant & mantTruncMask
-	exact = true
-	if mant-truncMant > 0 {
-		exact = false
-	}
-
-	newMant := uint16(truncMant >> mantShift)
-	a = a | newMant
-
-	newExp := uint16(exp+15) << 10
-	a |= newExp
-
-	return Float{bits: a}, exact
+	// 0b11111111111 (including implicit lead bit)
+	exact = exact && (mantissa&^0x7FF) == 0
+	mantissa &= 0x7FF
+	mantissa >>= 1
+	bits |= uint16(mantissa)
+	return Float{bits: bits}, exact
 }
 
 // Bits returns the IEEE 754 half precision binary representation of f.
@@ -204,58 +126,71 @@ func (f Float) Bits() uint16 {
 
 // Float32 returns the float32 representation of f.
 func (f Float) Float32() float32 {
-	panic("not yet implemented")
+	x, nan := f.Big()
+	if nan {
+		if x.Signbit() {
+			return float32(-math.NaN())
+		}
+		return float32(math.NaN())
+	}
+	y, _ := x.Float32()
+	return y
 }
 
 // Float64 returns the float64 representation of f.
 func (f Float) Float64() float64 {
-	x := f.big()
-	// TODO: Check accuracy?
+	x, nan := f.Big()
+	if nan {
+		if x.Signbit() {
+			return -math.NaN()
+		}
+		return math.NaN()
+	}
 	y, _ := x.Float64()
 	return y
 }
 
-// big returns the multi-precision floating-point number representation of f.
-func (f Float) big() *floats.Float {
+// Big returns the multi-precision floating-point number representation of f and
+// a boolean indicating whether f is Not-a-Number.
+func (f Float) Big() (x *big.Float, nan bool) {
 	signbit := f.signbit()
 	exp := f.exp()
 	mant := f.mant()
-	x := floats.New()
-	x.SetPrec(11)
+	x = big.NewFloat(0)
+	x.SetPrec(precision)
 	x.SetMode(big.ToNearestEven)
-	// ref: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Exponent_encoding
 
+	// ref: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Exponent_encoding
+	//
 	// 0b00001 - 0b11110
 	// Normalized number.
 	//
 	//    (-1)^signbit * 2^(exp-15) * 1.mant_2
 	lead := 1
-	const bias = 15
 	exponent := int(exp) - bias
 
 	switch exp {
 	// 0b11111
 	case 0x1F:
-		// NaN or Inf
+		// Inf or NaN
 		if mant == 0 {
 			// +-Inf
 			x.SetInf(signbit)
-			return x
+			return x, false
 		}
 		// +-NaN
-		x.NaN = true
 		if signbit {
-			x.Neg(x.Float)
+			x.Neg(x)
 		}
-		return x
+		return x, true
 	// 0b00000
 	case 0x00:
 		if mant == 0 {
 			// +-Zero
 			if signbit {
-				x.Neg(x.Float)
+				x.Neg(x)
 			}
-			return x
+			return x, false
 		}
 		// Denormalized number.
 		//
@@ -272,9 +207,9 @@ func (f Float) big() *floats.Float {
 	s := fmt.Sprintf("%s0b%d.%010bp%d", sign, lead, mant, exponent)
 	_, _, err := x.Parse(s, 0)
 	if err != nil {
-		log.Fatalf("%+v", err)
+		panic(err)
 	}
-	return x
+	return x, false
 }
 
 // signbit reports whether f is negative or negative 0.
