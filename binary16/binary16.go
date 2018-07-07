@@ -97,6 +97,26 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	exponent := x.MantExp(mant)
 	fmt.Println("exponent:", exponent)
 	exp := exponent - 1 + bias
+
+	// Handle denormalized values.
+	if exp < 0 {
+		fmt.Println("mant:", mant)
+		exact = true
+		if exponent < -23 {
+			exponent = -23
+			exact = false // TODO: use big.Below
+		}
+		mant.SetMantExp(mant, exp+10)
+		if mant.Signbit() {
+			mant.Neg(mant)
+		}
+		fmt.Println("mant:", mant)
+		v, _ := mant.Uint64()
+		fmt.Printf("v: %03X\n", v)
+		bits |= uint16(v)
+		return Float{bits: bits}, exact
+	}
+
 	// 0b11111
 	exact = (exp &^ 0x1F) == 0
 	bits |= uint16(exp&0x1F) << 10
