@@ -7,6 +7,7 @@ package binary16
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 
 	"github.com/mewmew/floats"
@@ -31,13 +32,169 @@ func NewFromBits(bits uint16) Float {
 // NewFromFloat32 returns the nearest half precision floating-point number for x
 // and a bool indicating whether f represents x exactly.
 func NewFromFloat32(x float32) (f Float, exact bool) {
-	panic("not yet implemented")
+	intRep := math.Float32bits(x)
+	sign := intRep&0x80000000 != 0
+	mant := intRep & 0x7fffff
+	exp := intRep & 0x7f800000 >> 23
+
+	var mantTruncMask uint32 = 0x7FE000
+	var mantShift uint32 = 13
+
+	switch exp {
+	// 0b11111
+	case 0xFF:
+		// NaN or Inf
+		var a uint16
+		if mant == 0 {
+			// +-Inf
+			a = 0x7C00
+			if sign {
+				a = 0xFC00
+			}
+			return Float{bits: a}, true
+		}
+		// +-NaN
+
+		a = 0
+		if sign {
+			a = 0x8000
+		}
+		a = a | 0x7C00
+
+		truncMant := mant & mantTruncMask
+		exact := true
+		if mant-truncMant > 0 {
+			exact = false
+		}
+
+		newMant := uint16(truncMant >> mantShift)
+		a = a | newMant
+
+		return Float{bits: a}, exact
+		// 0b00000000
+	case 0x00:
+		if mant == 0 {
+			// +-Zero
+			var a uint16
+			if sign {
+				a = 0x8000
+			}
+			return Float{bits: a}, true
+		}
+	}
+
+	var a uint16
+	if sign {
+		a = 0x8000
+	}
+
+	exp = exp - 127
+	if exp > 16 { // Inf with not exact
+		a |= 0x7C00
+		return Float{bits: a}, false
+	}
+
+	if exp < 16 { // Zero with not exact
+		return Float{bits: a}, false
+	}
+
+	truncMant := mant & mantTruncMask
+	exact = true
+	if mant-truncMant > 0 {
+		exact = false
+	}
+
+	newMant := uint16(truncMant >> mantShift)
+	a = a | newMant
+
+	newExp := uint16(exp+15) << 10
+	a |= newExp
+
+	return Float{bits: a}, exact
 }
 
 // NewFromFloat64 returns the nearest half precision floating-point number for x
 // and a bool indicating whether f represents x exactly.
 func NewFromFloat64(x float64) (f Float, exact bool) {
-	panic("not yet implemented")
+	intRep := math.Float64bits(x)
+	sign := intRep&0x8000000000000000 != 0
+	exp := intRep & 0x7FF0000000000000 >> 52
+	mant := intRep & 0xFFFFFFFFFFFFF
+
+	var mantTruncMask uint64 = 0xFFC0000000000
+	var mantShift uint64 = 42
+
+	switch exp {
+	// 0b11111
+	case 0x7FF:
+		// NaN or Inf
+		var a uint16
+		if mant == 0 {
+			// +-Inf
+			a = 0x7C00
+			if sign {
+				a = 0xFC00
+			}
+			return Float{bits: a}, true
+		}
+		// +-NaN
+
+		a = 0
+		if sign {
+			a = 0x8000
+		}
+		a = a | 0x7C00
+
+		truncMant := mant & mantTruncMask
+		exact := true
+		if mant-truncMant > 0 {
+			exact = false
+		}
+
+		newMant := uint16(truncMant >> mantShift)
+		a = a | newMant
+
+		return Float{bits: a}, exact
+		// 0b00000000
+	case 0x00:
+		if mant == 0 {
+			// +-Zero
+			var a uint16
+			if sign {
+				a = 0x8000
+			}
+			return Float{bits: a}, true
+		}
+	}
+
+	var a uint16
+	if sign {
+		a = 0x8000
+	}
+
+	exp = exp - 1023
+	if exp > 16 { // Inf with not exact
+		a |= 0x7C00
+		return Float{bits: a}, false
+	}
+
+	if exp < 16 { // Zero with not exact
+		return Float{bits: a}, false
+	}
+
+	truncMant := mant & mantTruncMask
+	exact = true
+	if mant-truncMant > 0 {
+		exact = false
+	}
+
+	newMant := uint16(truncMant >> mantShift)
+	a = a | newMant
+
+	newExp := uint16(exp+15) << 10
+	a |= newExp
+
+	return Float{bits: a}, exact
 }
 
 // Bits returns the IEEE 754 half precision binary representation of f.
