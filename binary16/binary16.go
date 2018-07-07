@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -65,6 +63,7 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 // NewFromBig returns the nearest half precision floating-point number for x and
 // a bool indicating whether f represents x exactly.
 func NewFromBig(x *big.Float) (f Float, exact bool) {
+	fmt.Println("x:", x)
 	zero := &big.Float{}
 	switch {
 	// +-Inf
@@ -90,32 +89,43 @@ func NewFromBig(x *big.Float) (f Float, exact bool) {
 	if x.Signbit() {
 		bits |= 0x8000
 	}
+	fmt.Println("sign:", x.Signbit())
+	fmt.Printf("bits: %04X\n", bits)
 
 	// Exponent and mantissa.
 	mant := &big.Float{}
-	exp := x.MantExp(mant)
+	exponent := x.MantExp(mant)
+	// TODO: Check overflow and set exact.
+	fmt.Println("exponent:", exponent)
+	exp := exponent - 1 + bias
 	// 0b11111
 	exact = (exp &^ 0x1F) == 0
-	exponent := uint16(exp&0x1F) << 10
-	bits |= exponent
-	s := mant.Text('b', -1)
-	pos := strings.IndexByte(s, 'p')
-	if pos == -1 {
-		panic(fmt.Sprintf("unable to locate exponent position 'p' in %q", s))
+	bits |= uint16(exp&0x1F) << 10
+	fmt.Println("exp:", exp)
+	fmt.Printf("bits: %04X\n", bits)
+
+	fmt.Println("mant:", mant)
+	mant.SetMantExp(mant, precision)
+	fmt.Println("mant:", mant)
+	if !mant.IsInt() {
+		// TODO: handle truncation.
+		panic("truncation")
 	}
-	s = s[:pos]
-	if strings.HasPrefix(s, "-") {
-		s = s[len("-"):]
-	}
-	mantissa, err := strconv.Atoi(s)
-	if err != nil {
-		panic(err)
-	}
+	mantissa, _ := mant.Uint64()
+	fmt.Println("mantissa:", mantissa)
+	mantissa &^= 1024 // clear implicit lead bit.
+	fmt.Println("mantissa:", mantissa)
+
+	//m, _ := mant.Rat(nil)
+	//fmt.Println("m:", m)
+
 	// 0b11111111111 (including implicit lead bit)
 	exact = exact && (mantissa&^0x7FF) == 0
 	mantissa &= 0x7FF
-	mantissa >>= 1
 	bits |= uint16(mantissa)
+	fmt.Println("mantissa:", mantissa)
+	fmt.Printf("bits: %04X\n", bits)
+	fmt.Println()
 	return Float{bits: bits}, exact
 }
 

@@ -8,11 +8,19 @@ import (
 )
 
 func TestNewFromBits(t *testing.T) {
-	// from: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
 	golden := []struct {
 		bits uint16
 		want float64
 	}{
+		// Special numbers.
+		// 0 11111 1000000000 = +NaN
+		{bits: 0x7E00, want: math.NaN()},
+		// -NaN
+		// 1 11111 1000000000 = -NaN
+		{bits: 0xFE00, want: -math.NaN()},
+
+		// from: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
+
 		// 0 01111 0000000000 = 1
 		{bits: 0x3C00, want: 1},
 		// 0 01111 0000000001 = 1 + 2^(-10) = 1.0009765625 (next smallest float after 1)
@@ -35,6 +43,27 @@ func TestNewFromBits(t *testing.T) {
 		{bits: 0xFC00, want: math.Inf(-1)},
 		// 0 01101 0101010101 = 0.333251953125 ~= 1/3
 		{bits: 0x3555, want: 0.333251953125},
+
+		// from: https://reviews.llvm.org/rL237161
+
+		// Normalized numbers.
+		// 0 01110 0000000000 = 0.5
+		{bits: 0x3800, want: 0.5},
+		// 1 01110 0000000000 = -0.5
+		{bits: 0xB800, want: -0.5},
+		// 0 01111 1000000000 = 1.5
+		{bits: 0x3E00, want: 1.5},
+		// 1 01111 1000000000 = -1.5
+		{bits: 0xBE00, want: -1.5},
+		// 0 10000 0100000000 = 2.5
+		{bits: 0x4100, want: 2.5},
+		// 1 10000 0100000000 = -2.5
+		{bits: 0xC100, want: -2.5},
+		// Denormalized numbers.
+		// 0 00000 0000010000 = 2^(-20)
+		{bits: 0x0010, want: math.Pow(2, -20)},
+		// 1 00000 0000000001 = -2^(-24)
+		{bits: 0x8001, want: -math.Pow(2, -24)},
 	}
 	for _, g := range golden {
 		f := NewFromBits(g.bits)
@@ -43,7 +72,78 @@ func TestNewFromBits(t *testing.T) {
 		gotBits := math.Float64bits(got)
 		//fmt.Printf("bits: 0x%04X (%v)\n", g.bits, g.want)
 		if wantBits != gotBits {
-			t.Errorf("0x%04X: number mismatch; expected 0x%08X (%v), got 0x%08X (%v)", g.bits, wantBits, g.want, gotBits, got)
+			t.Errorf("0x%04X: number mismatch; expected 0x%016X (%v), got 0x%016X (%v)", g.bits, wantBits, g.want, gotBits, got)
+		}
+	}
+}
+
+func TestNewFromFloat64(t *testing.T) {
+	golden := []struct {
+		in    float64
+		want  uint16
+		exact bool
+	}{
+		// Special numbers.
+		// 0 11111 1000000000 = +NaN
+		{in: math.NaN(), want: 0x7E00, exact: true},
+		// -NaN
+		// 1 11111 1000000000 = -NaN
+		{in: -math.NaN(), want: 0xFE00, exact: true},
+
+		// from: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
+
+		// 0 01111 0000000000 = 1
+		{in: 1, want: 0x3C00, exact: true},
+		// 0 01111 0000000001 = 1 + 2^(-10) = 1.0009765625 (next smallest float after 1)
+		{in: 1.0009765625, want: 0x3C01, exact: true},
+		// 1 10000 0000000000 = -2
+		{in: -2, want: 0xC000, exact: true},
+		// 0 11110 1111111111 = 65504 (max half precision)
+		{in: 65504, want: 0x7BFF, exact: true},
+		// 0 00001 0000000000 = 2^(-14) ~= 6.10352 * 10^(-5) (minimum positive normal)
+		{in: math.Pow(2, -14), want: 0x0400, exact: true},
+		// 0 00000 0000000001 = 2^(-24) ~= 5.96046 * 10^(-8) (minimum positive subnormal)
+		{in: math.Pow(2, -24), want: 0x0001, exact: true},
+		// 0 00000 0000000000 = 0
+		{in: 0, want: 0x0000, exact: true},
+		// 1 00000 0000000000 = −0
+		{in: math.Copysign(0, -1), want: 0x8000, exact: true},
+		// 0 11111 0000000000 = infinity
+		{in: math.Inf(1), want: 0x7C00, exact: true},
+		// 1 11111 0000000000 = -infinity
+		{in: math.Inf(-1), want: 0xFC00, exact: true},
+		// 0 01101 0101010101 = 0.333251953125 ~= 1/3
+		{in: 0.333251953125, want: 0x3555, exact: true},
+
+		// from: https://reviews.llvm.org/rL237161
+
+		// Normalized numbers.
+		// 0 01110 0000000000 = 0.5
+		{in: 0.5, want: 0x3800, exact: true},
+		// 1 01110 0000000000 = -0.5
+		{in: -0.5, want: 0xB800, exact: true},
+		// 0 01111 1000000000 = 1.5
+		{in: 1.5, want: 0x3E00, exact: true},
+		// 1 01111 1000000000 = -1.5
+		{in: -1.5, want: 0xBE00, exact: true},
+		// 0 10000 0100000000 = 2.5
+		{in: 2.5, want: 0x4100, exact: true},
+		// 1 10000 0100000000 = -2.5
+		{in: -2.5, want: 0xC100, exact: true},
+		// Denormalized numbers.
+		// 0 00000 0000010000 = 2^(-20)
+		{in: math.Pow(2, -20), want: 0x0010, exact: true},
+		// 1 00000 0000000001 = -2^(-24)
+		{in: -math.Pow(2, -24), want: 0x8001, exact: true},
+	}
+	for _, g := range golden {
+		f, exact := NewFromFloat64(g.in)
+		got := f.Bits()
+		if g.want != got {
+			t.Errorf("bits mismatch; expected 0x%04X (%v), got 0x%04X (%v)", g.want, g.in, got, f.Float64())
+		}
+		if g.exact != exact {
+			t.Errorf("exact mismatch; expected %v (%v), got %v (%v)", g.exact, g.in, exact, f.Float64())
 		}
 	}
 }
