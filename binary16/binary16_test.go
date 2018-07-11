@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromBits(t *testing.T) {
@@ -67,6 +69,80 @@ func TestNewFromBits(t *testing.T) {
 		if wantBits != gotBits {
 			t.Errorf("0x%04X: number mismatch; expected 0x%08X (%v), got 0x%08X (%v)", g.bits, wantBits, g.want, gotBits, got)
 		}
+	}
+}
+
+func TestNewFromFloat32(t *testing.T) {
+	golden := []struct {
+		uint32Float uint32
+		a           uint16
+		str         string
+	}{
+		// Special numbers.
+
+		// +NaN
+		{uint32Float: 0x7F800000, a: 0x7C00, str: "+Nan not equal"},
+		// -NaN
+		{uint32Float: 0xFF800000, a: 0xFC00, str: "-Nan not equal"},
+		// +Inf
+		{uint32Float: 0x7FC00000, a: 0x7E00, str: "+Inf not equal"},
+		// -Inf
+		{uint32Float: 0xFFC00000, a: 0xFE00, str: "-Inf not equal"},
+		// +0
+		{uint32Float: 0x00000000, a: 0, str: "+0 not equal"},
+		// -0
+		{uint32Float: 0x80000000, a: 0x8000, str: "-0 not equal"},
+
+		// Normalized numbers.
+		{uint32Float: math.Float32bits(0.5), a: 0x3800, str: "+0.5 not equal"},
+		{uint32Float: math.Float32bits(-0.5), a: 0xB800, str: "-0.5 not equal"},
+		{uint32Float: math.Float32bits(1.5), a: 0x3E00, str: "+1.5 not equal"},
+		{uint32Float: math.Float32bits(-1.5), a: 0xBE00, str: "-1.5 not equal"},
+		{uint32Float: math.Float32bits(2.5), a: 0x4100, str: "+2.5 not equal"},
+		{uint32Float: math.Float32bits(-2.5), a: 0xC100, str: "-2.5 not equal"},
+	}
+
+	for _, g := range golden {
+		f, _ := NewFromFloat32(math.Float32frombits(g.uint32Float))
+		a := f.Bits()
+		assert.Equal(t, g.a, a, g.str)
+	}
+}
+
+func TestNewFromFloat64(t *testing.T) {
+	golden := []struct {
+		uint64Float uint64
+		a           uint16
+		str         string
+	}{
+		// Special numbers.
+
+		// +NaN
+		{uint64Float: 0x7FF0000000000000, a: 0x7C00, str: "+Nan not equal"},
+		// -NaN
+		{uint64Float: 0xFFF0000000000000, a: 0xFC00, str: "-Nan not equal"},
+		// +Inf
+		{uint64Float: 0x7FF8000000000000, a: 0x7E00, str: "+Inf not equal"},
+		// -Inf
+		{uint64Float: 0xFFF8000000000000, a: 0xFE00, str: "-Inf not equal"},
+		// +0
+		{uint64Float: 0x00000000, a: 0, str: "+0 not equal"},
+		// -0
+		{uint64Float: 0x8000000000000000, a: 0x8000, str: "-0 not equal"},
+
+		// Normalized numbers.
+		{uint64Float: math.Float64bits(0.5), a: 0x3800, str: "+0.5 not equal"},
+		{uint64Float: math.Float64bits(-0.5), a: 0xB800, str: "-0.5 not equal"},
+		{uint64Float: math.Float64bits(1.5), a: 0x3E00, str: "+1.5 not equal"},
+		{uint64Float: math.Float64bits(-1.5), a: 0xBE00, str: "-1.5 not equal"},
+		{uint64Float: math.Float64bits(2.5), a: 0x4100, str: "+2.5 not equal"},
+		{uint64Float: math.Float64bits(-2.5), a: 0xC100, str: "-2.5 not equal"},
+	}
+
+	for _, g := range golden {
+		f, _ := NewFromFloat64(math.Float64frombits(g.uint64Float))
+		a := f.Bits()
+		assert.Equal(t, g.a, a, g.str)
 	}
 }
 

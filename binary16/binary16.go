@@ -35,7 +35,7 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 	intRep := math.Float32bits(x)
 	sign := intRep&0x80000000 != 0
 	mant := intRep & 0x7fffff
-	exp := intRep & 0x7f800000 >> 23
+	exp := int32(intRep & 0x7f800000 >> 23)
 
 	var mantTruncMask uint32 = 0x7FE000
 	var mantShift uint32 = 13
@@ -88,13 +88,13 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 		a = 0x8000
 	}
 
-	exp = exp - 127
-	if exp > 16 { // Inf with not exact
+	expVal := exp - 127
+	if expVal > 16 { // Inf with not exact
 		a |= 0x7C00
 		return Float{bits: a}, false
 	}
 
-	if exp < 16 { // Zero with not exact
+	if expVal < -16 { // Zero with not exact
 		return Float{bits: a}, false
 	}
 
@@ -107,7 +107,7 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 	newMant := uint16(truncMant >> mantShift)
 	a = a | newMant
 
-	newExp := uint16(exp+15) << 10
+	newExp := uint16(expVal+15) << 10
 	a |= newExp
 
 	return Float{bits: a}, exact
@@ -118,7 +118,7 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 func NewFromFloat64(x float64) (f Float, exact bool) {
 	intRep := math.Float64bits(x)
 	sign := intRep&0x8000000000000000 != 0
-	exp := intRep & 0x7FF0000000000000 >> 52
+	exp := int64(intRep & 0x7FF0000000000000 >> 52)
 	mant := intRep & 0xFFFFFFFFFFFFF
 
 	var mantTruncMask uint64 = 0xFFC0000000000
@@ -178,7 +178,7 @@ func NewFromFloat64(x float64) (f Float, exact bool) {
 		return Float{bits: a}, false
 	}
 
-	if exp < 16 { // Zero with not exact
+	if exp < -16 { // Zero with not exact
 		return Float{bits: a}, false
 	}
 

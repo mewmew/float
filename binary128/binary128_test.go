@@ -56,13 +56,13 @@ func TestNewFromFloat64(t *testing.T) {
 		// Special numbers.
 
 		// +NaN
-		{uint64Float: 0x7FF8000000000000, a: 0x7fff800000000000, b: 0, str: "+Nan not equal"},
-		// -NaN
-		{uint64Float: 0xFFF8000000000000, a: 0xffff800000000000, b: 0, str: "-Nan not equal"},
-		// +Inf
 		{uint64Float: 0x7FF0000000000000, a: 0x7fff000000000000, b: 0, str: "+Inf not equal"},
-		// -Inf
+		// -Nan
 		{uint64Float: 0xFFF0000000000000, a: 0xffff000000000000, b: 0, str: "-Inf not equal"},
+		// +Inf
+		{uint64Float: 0x7FF8000000000000, a: 0x7fff800000000000, b: 0, str: "+Nan not equal"},
+		// -Inf
+		{uint64Float: 0xFFF8000000000000, a: 0xffff800000000000, b: 0, str: "-Nan not equal"},
 		// +0
 		{uint64Float: 0x0, a: 0, b: 0, str: "+0 not equal"},
 		// -0
