@@ -156,8 +156,11 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 		acc = big.Below
 	}
 	// mantissa, including explicit lead bit
-	mantissa, acc := mant.Uint64()
-	m |= uint64(mantissa)
+	mantissa, acc2 := mant.Uint64()
+	if acc == big.Exact {
+		acc = acc2
+	}
+	m |= mantissa
 	return Float{se: se, m: m}, acc
 }
 
