@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/big"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromBits(t *testing.T) {
