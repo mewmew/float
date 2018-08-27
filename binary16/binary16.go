@@ -1,3 +1,5 @@
+//go:generate go run gen.go -o extra_test.go
+
 // Package binary16 implements encoding and decoding of IEEE 754 half precision
 // floating-point numbers.
 //
@@ -96,14 +98,15 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	// Exponent and mantissa.
 	mant := &big.Float{}
 	exponent := x.MantExp(mant)
+	// Remove 1 from the exponent as big.Float has an no lead bit.
 	exp := exponent - 1 + bias
 
 	// Handle denormalized values.
-	if exp < 0 {
+	// TODO: validate implementation of denormalized values.
+	if exp <= 0 {
 		acc := big.Exact
-		if exponent < -23 { // TODO: verify what is happening here :)
-			exponent = -23
-			exp = exponent - 1 + bias // TODO: verify what is happening here :)
+		if exp <= -(precision - 1) {
+			exp = precision - 1
 			acc = big.Below
 		}
 		mant.SetMantExp(mant, exp+precision-1)
@@ -111,7 +114,8 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 			mant.Neg(mant)
 		}
 		v, _ := mant.Uint64()
-		bits |= uint16(v)
+		// TODO: calculate acc based on if v&^0x7FF != 0 {}
+		bits |= uint16(v & 0x7FF)
 		return Float{bits: bits}, acc
 	}
 
@@ -130,7 +134,7 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 		acc = big.Below
 	}
 	mantissa, _ := mant.Uint64()
-	mantissa &^= 0x400 // clear implicit lead bit. 2^10
+	mantissa &^= 0x400 // clear implicit lead bit; 2^10
 
 	// 0b11111111111 (including implicit lead bit)
 	if acc == big.Exact && (mantissa&^0x7FF) != 0 {
