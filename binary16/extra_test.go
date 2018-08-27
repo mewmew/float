@@ -31,7 +31,6 @@ func TestNewFromBitsDenormalized(t *testing.T) {
 	}
 }
 
-
 func TestNewFromFloat32Normalized(t *testing.T) {
 	for _, g := range goldenNormalized {
 		in := float32(g.want)
