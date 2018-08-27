@@ -187,7 +187,7 @@ func (f Float) Float64() (float64, big.Accuracy) {
 func (f Float) Big() (x *big.Float, nan bool) {
 	signbit := f.Signbit()
 	exp := f.Exp()
-	mant := f.Mant()
+	frac := f.Frac()
 	x = big.NewFloat(0)
 	x.SetPrec(precision)
 	x.SetMode(big.ToNearestEven)
@@ -205,7 +205,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	// 0b11111
 	case 0x1F:
 		// Inf or NaN
-		if mant == 0 {
+		if frac == 0 {
 			// +-Inf
 			x.SetInf(signbit)
 			return x, false
@@ -217,7 +217,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 		return x, true
 	// 0b00000
 	case 0x00:
-		if mant == 0 {
+		if frac == 0 {
 			// +-Zero
 			if signbit {
 				x.Neg(x)
@@ -236,7 +236,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	if signbit {
 		sign = "-"
 	}
-	s := fmt.Sprintf("%s0b%d.%010bp%d", sign, lead, mant, exponent)
+	s := fmt.Sprintf("%s0b%d.%010bp%d", sign, lead, frac, exponent)
 	if _, _, err := x.Parse(s, 0); err != nil {
 		panic(err)
 	}
@@ -250,13 +250,13 @@ func (f Float) Signbit() bool {
 }
 
 // Exp returns the exponent of f.
-func (f Float) Exp() uint16 {
+func (f Float) Exp() int {
 	// 0b0111110000000000
-	return f.bits & 0x7C00 >> 10
+	return int(f.bits & 0x7C00 >> 10)
 }
 
-// Mant returns the mantissa of f.
-func (f Float) Mant() uint16 {
+// Frac returns the fraction of f.
+func (f Float) Frac() uint16 {
 	// 0b0000001111111111
 	return f.bits & 0x03FF
 }
