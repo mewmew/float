@@ -4,8 +4,6 @@ import (
 	"math"
 	"math/big"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFromBits(t *testing.T) {
@@ -14,144 +12,224 @@ func TestNewFromBits(t *testing.T) {
 		want float64
 	}{
 		// Special numbers.
-
-		// +NaN
+		// 0 11111 1000000000 = +NaN
 		{bits: 0x7E00, want: math.NaN()},
 		// -NaN
+		// 1 11111 1000000000 = -NaN
 		{bits: 0xFE00, want: -math.NaN()},
-		// +Inf
-		{bits: 0x7C00, want: math.Inf(1)},
-		// -Inf
-		{bits: 0xFC00, want: math.Inf(-1)},
-		// +0
-		{bits: 0x0000, want: 0.0},
-		// -0
-		{bits: 0x8000, want: math.Copysign(0.0, -1)},
 
-		// From https://reviews.llvm.org/rL237161
+		// from: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
+
+		// 0 01111 0000000000 = 1
+		{bits: 0x3C00, want: 1},
+		// 0 01111 0000000001 = 1 + 2^(-10) = 1.0009765625 (next smallest float after 1)
+		{bits: 0x3C01, want: 1.0009765625},
+		// 1 10000 0000000000 = -2
+		{bits: 0xC000, want: -2},
+		// 0 11110 1111111111 = 65504 (max half precision)
+		{bits: 0x7BFF, want: 65504},
+		// 0 00001 0000000000 = 2^(-14) ~= 6.10352 * 10^(-5) (minimum positive normal)
+		{bits: 0x0400, want: math.Pow(2, -14)},
+		// 0 00000 0000000001 = 2^(-24) ~= 5.96046 * 10^(-8) (minimum positive subnormal)
+		{bits: 0x0001, want: math.Pow(2, -24)},
+		// 0 00000 0000000000 = 0
+		{bits: 0x0000, want: 0},
+		// 1 00000 0000000000 = −0
+		{bits: 0x8000, want: math.Copysign(0, -1)},
+		// 0 11111 0000000000 = infinity
+		{bits: 0x7C00, want: math.Inf(1)},
+		// 1 11111 0000000000 = -infinity
+		{bits: 0xFC00, want: math.Inf(-1)},
+		// 0 01101 0101010101 = 0.333251953125 ~= 1/3
+		{bits: 0x3555, want: 0.333251953125},
+
+		// from: https://reviews.llvm.org/rL237161
 
 		// Normalized numbers.
+		// 0 01110 0000000000 = 0.5
 		{bits: 0x3800, want: 0.5},
+		// 1 01110 0000000000 = -0.5
 		{bits: 0xB800, want: -0.5},
+		// 0 01111 1000000000 = 1.5
 		{bits: 0x3E00, want: 1.5},
+		// 1 01111 1000000000 = -1.5
 		{bits: 0xBE00, want: -1.5},
+		// 0 10000 0100000000 = 2.5
 		{bits: 0x4100, want: 2.5},
+		// 1 10000 0100000000 = -2.5
 		{bits: 0xC100, want: -2.5},
-
 		// Denormalized numbers.
-		{bits: 0x0010, want: float64FromString("0x1.0p-20")},
-		{bits: 0x0001, want: float64FromString("0x1.0p-24")},
-		{bits: 0x8001, want: float64FromString("-0x1.0p-24")},
-		//{bits: 0x0001, want: float64FromString("0x1.5p-25")},
+		// 0 00000 0000010000 = 2^(-20)
+		{bits: 0x0010, want: math.Pow(2, -20)},
+		// 1 00000 0000000001 = -2^(-24)
+		{bits: 0x8001, want: -math.Pow(2, -24)},
 
-		// Rounding.
-		// TODO: Handle rounding.
-		//{bits: 0x4248, want: 3.14},
-		//{bits: 0xC248, want: -3.14},
-		//{bits: 0x4248, want: 3.1415926535},
-		//{bits: 0xC248, want: -3.1415926535},
-		//{bits: 0x7C00, want: float64FromString("0x1.987124876876324p+100")},
-		{bits: 0x6E62, want: float64FromString("0x1.988p+12")},
-		{bits: 0x3C00, want: float64FromString("0x1.0p+0")},
-		{bits: 0x0400, want: float64FromString("0x1.0p-14")},
-		// rounded to zero
-		//{bits: 0x0000, want: float64FromString("0x1.0p-25")},
-		//{bits: 0x8000, want: float64FromString("-0x1.0p-25")},
-		// max (precise)
-		{bits: 0x7BFF, want: 65504.0},
+		// 2^i
+		{bits: 0x0001, want: math.Pow(2, -24)}, // 2^(-24)
+		{bits: 0x0002, want: math.Pow(2, -23)}, // 2^(-23)
+		{bits: 0x0004, want: math.Pow(2, -22)}, // 2^(-22)
+		{bits: 0x0008, want: math.Pow(2, -21)}, // 2^(-21)
+		{bits: 0x0010, want: math.Pow(2, -20)}, // 2^(-20)
+		{bits: 0x0020, want: math.Pow(2, -19)}, // 2^(-19)
+		{bits: 0x0040, want: math.Pow(2, -18)}, // 2^(-18)
+		{bits: 0x0080, want: math.Pow(2, -17)}, // 2^(-17)
+		{bits: 0x0100, want: math.Pow(2, -16)}, // 2^(-16)
+		{bits: 0x0200, want: math.Pow(2, -15)}, // 2^(-15)
+		{bits: 0x0400, want: math.Pow(2, -14)}, // 2^(-14)
+		{bits: 0x0800, want: math.Pow(2, -13)}, // 2^(-13)
+		{bits: 0x0C00, want: math.Pow(2, -12)}, // 2^(-12)
+		{bits: 0x1000, want: math.Pow(2, -11)}, // 2^(-11)
+		{bits: 0x1400, want: math.Pow(2, -10)}, // 2^(-10)
+		{bits: 0x1800, want: math.Pow(2, -9)},  // 2^(-9)
+		{bits: 0x1C00, want: math.Pow(2, -8)},  // 2^(-8)
+		{bits: 0x2000, want: math.Pow(2, -7)},  // 2^(-7)
+		{bits: 0x2400, want: math.Pow(2, -6)},  // 2^(-6)
+		{bits: 0x2800, want: math.Pow(2, -5)},  // 2^(-5)
+		{bits: 0x2C00, want: math.Pow(2, -4)},  // 2^(-4)
+		{bits: 0x3000, want: math.Pow(2, -3)},  // 2^(-3)
+		{bits: 0x3400, want: math.Pow(2, -2)},  // 2^(-2)
+		{bits: 0x3800, want: math.Pow(2, -1)},  // 2^(-1)
+		{bits: 0x3C00, want: math.Pow(2, 0)},   // 2^0
+		{bits: 0x4000, want: math.Pow(2, 1)},   // 2^1
+		{bits: 0x4400, want: math.Pow(2, 2)},   // 2^2
+		{bits: 0x4800, want: math.Pow(2, 3)},   // 2^3
+		{bits: 0x4C00, want: math.Pow(2, 4)},   // 2^4
+		{bits: 0x5000, want: math.Pow(2, 5)},   // 2^5
+		{bits: 0x5400, want: math.Pow(2, 6)},   // 2^6
+		{bits: 0x5800, want: math.Pow(2, 7)},   // 2^7
+		{bits: 0x5C00, want: math.Pow(2, 8)},   // 2^8
+		{bits: 0x6000, want: math.Pow(2, 9)},   // 2^9
+		{bits: 0x6400, want: math.Pow(2, 10)},  // 2^10
+		{bits: 0x6800, want: math.Pow(2, 11)},  // 2^11
+		{bits: 0x6C00, want: math.Pow(2, 12)},  // 2^12
+		{bits: 0x7000, want: math.Pow(2, 13)},  // 2^13
+		{bits: 0x7400, want: math.Pow(2, 14)},  // 2^14
+		{bits: 0x7800, want: math.Pow(2, 15)},  // 2^15
 	}
-
 	for _, g := range golden {
 		f := NewFromBits(g.bits)
-		got := f.Float64()
+		got, _ := f.Float64()
 		wantBits := math.Float64bits(g.want)
 		gotBits := math.Float64bits(got)
+		//fmt.Printf("bits: 0x%04X (%v)\n", g.bits, g.want)
 		if wantBits != gotBits {
-			t.Errorf("0x%04X: number mismatch; expected 0x%08X (%v), got 0x%08X (%v)", g.bits, wantBits, g.want, gotBits, got)
+			t.Errorf("0x%04X: number mismatch; expected 0x%016X (%v), got 0x%016X (%v)", g.bits, wantBits, g.want, gotBits, got)
 		}
-	}
-}
-
-func TestNewFromFloat32(t *testing.T) {
-	golden := []struct {
-		uint32Float uint32
-		a           uint16
-		str         string
-	}{
-		// Special numbers.
-
-		// +NaN
-		{uint32Float: 0x7F800000, a: 0x7C00, str: "+Nan not equal"},
-		// -NaN
-		{uint32Float: 0xFF800000, a: 0xFC00, str: "-Nan not equal"},
-		// +Inf
-		{uint32Float: 0x7FC00000, a: 0x7E00, str: "+Inf not equal"},
-		// -Inf
-		{uint32Float: 0xFFC00000, a: 0xFE00, str: "-Inf not equal"},
-		// +0
-		{uint32Float: 0x00000000, a: 0, str: "+0 not equal"},
-		// -0
-		{uint32Float: 0x80000000, a: 0x8000, str: "-0 not equal"},
-
-		// Normalized numbers.
-		{uint32Float: math.Float32bits(0.5), a: 0x3800, str: "+0.5 not equal"},
-		{uint32Float: math.Float32bits(-0.5), a: 0xB800, str: "-0.5 not equal"},
-		{uint32Float: math.Float32bits(1.5), a: 0x3E00, str: "+1.5 not equal"},
-		{uint32Float: math.Float32bits(-1.5), a: 0xBE00, str: "-1.5 not equal"},
-		{uint32Float: math.Float32bits(2.5), a: 0x4100, str: "+2.5 not equal"},
-		{uint32Float: math.Float32bits(-2.5), a: 0xC100, str: "-2.5 not equal"},
-	}
-
-	for _, g := range golden {
-		f, _ := NewFromFloat32(math.Float32frombits(g.uint32Float))
-		a := f.Bits()
-		assert.Equal(t, g.a, a, g.str)
 	}
 }
 
 func TestNewFromFloat64(t *testing.T) {
 	golden := []struct {
-		uint64Float uint64
-		a           uint16
-		str         string
+		in   float64
+		want uint16
+		acc  big.Accuracy
 	}{
 		// Special numbers.
-
-		// +NaN
-		{uint64Float: 0x7FF0000000000000, a: 0x7C00, str: "+Nan not equal"},
+		// 0 11111 1000000000 = +NaN
+		{in: math.NaN(), want: 0x7E00, acc: big.Exact},
 		// -NaN
-		{uint64Float: 0xFFF0000000000000, a: 0xFC00, str: "-Nan not equal"},
-		// +Inf
-		{uint64Float: 0x7FF8000000000000, a: 0x7E00, str: "+Inf not equal"},
-		// -Inf
-		{uint64Float: 0xFFF8000000000000, a: 0xFE00, str: "-Inf not equal"},
-		// +0
-		{uint64Float: 0x00000000, a: 0, str: "+0 not equal"},
-		// -0
-		{uint64Float: 0x8000000000000000, a: 0x8000, str: "-0 not equal"},
+		// 1 11111 1000000000 = -NaN
+		{in: -math.NaN(), want: 0xFE00, acc: big.Exact},
+
+		// from: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Half_precision_examples
+
+		// 0 01111 0000000000 = 1
+		{in: 1, want: 0x3C00, acc: big.Exact},
+		// 0 01111 0000000001 = 1 + 2^(-10) = 1.0009765625 (next smallest float after 1)
+		{in: 1.0009765625, want: 0x3C01, acc: big.Exact},
+		// 1 10000 0000000000 = -2
+		{in: -2, want: 0xC000, acc: big.Exact},
+		// 0 11110 1111111111 = 65504 (max half precision)
+		{in: 65504, want: 0x7BFF, acc: big.Exact},
+		// 0 00001 0000000000 = 2^(-14) ~= 6.10352 * 10^(-5) (minimum positive normal)
+		{in: math.Pow(2, -14), want: 0x0400, acc: big.Exact},
+		// 0 00000 0000000001 = 2^(-24) ~= 5.96046 * 10^(-8) (minimum positive subnormal)
+		{in: math.Pow(2, -24), want: 0x0001, acc: big.Exact},
+		// 0 00000 0000000000 = 0
+		{in: 0, want: 0x0000, acc: big.Exact},
+		// 1 00000 0000000000 = −0
+		{in: math.Copysign(0, -1), want: 0x8000, acc: big.Exact},
+		// 0 11111 0000000000 = infinity
+		{in: math.Inf(1), want: 0x7C00, acc: big.Exact},
+		// 1 11111 0000000000 = -infinity
+		{in: math.Inf(-1), want: 0xFC00, acc: big.Exact},
+		// 0 01101 0101010101 = 0.333251953125 ~= 1/3
+		{in: 0.333251953125, want: 0x3555, acc: big.Exact},
+
+		// from: https://reviews.llvm.org/rL237161
 
 		// Normalized numbers.
-		{uint64Float: math.Float64bits(0.5), a: 0x3800, str: "+0.5 not equal"},
-		{uint64Float: math.Float64bits(-0.5), a: 0xB800, str: "-0.5 not equal"},
-		{uint64Float: math.Float64bits(1.5), a: 0x3E00, str: "+1.5 not equal"},
-		{uint64Float: math.Float64bits(-1.5), a: 0xBE00, str: "-1.5 not equal"},
-		{uint64Float: math.Float64bits(2.5), a: 0x4100, str: "+2.5 not equal"},
-		{uint64Float: math.Float64bits(-2.5), a: 0xC100, str: "-2.5 not equal"},
-	}
+		// 0 01110 0000000000 = 0.5
+		{in: 0.5, want: 0x3800, acc: big.Exact},
+		// 1 01110 0000000000 = -0.5
+		{in: -0.5, want: 0xB800, acc: big.Exact},
+		// 0 01111 1000000000 = 1.5
+		{in: 1.5, want: 0x3E00, acc: big.Exact},
+		// 1 01111 1000000000 = -1.5
+		{in: -1.5, want: 0xBE00, acc: big.Exact},
+		// 0 10000 0100000000 = 2.5
+		{in: 2.5, want: 0x4100, acc: big.Exact},
+		// 1 10000 0100000000 = -2.5
+		{in: -2.5, want: 0xC100, acc: big.Exact},
+		// Denormalized numbers.
+		// 0 00000 0000010000 = 2^(-20)
+		{in: math.Pow(2, -20), want: 0x0010, acc: big.Exact},
+		// 1 00000 0000000001 = -2^(-24)
+		{in: -math.Pow(2, -24), want: 0x8001, acc: big.Exact},
 
+		// 2^i
+		{in: math.Pow(2, -25), want: 0x0000, acc: big.Below}, // 2^(-25)
+		{in: math.Pow(2, -24), want: 0x0001, acc: big.Exact}, // 2^(-24)
+		{in: math.Pow(2, -23), want: 0x0002, acc: big.Exact}, // 2^(-23)
+		{in: math.Pow(2, -22), want: 0x0004, acc: big.Exact}, // 2^(-22)
+		{in: math.Pow(2, -21), want: 0x0008, acc: big.Exact}, // 2^(-21)
+		{in: math.Pow(2, -20), want: 0x0010, acc: big.Exact}, // 2^(-20)
+		{in: math.Pow(2, -19), want: 0x0020, acc: big.Exact}, // 2^(-19)
+		{in: math.Pow(2, -18), want: 0x0040, acc: big.Exact}, // 2^(-18)
+		{in: math.Pow(2, -17), want: 0x0080, acc: big.Exact}, // 2^(-17)
+		{in: math.Pow(2, -16), want: 0x0100, acc: big.Exact}, // 2^(-16)
+		{in: math.Pow(2, -15), want: 0x0200, acc: big.Exact}, // 2^(-15)
+		{in: math.Pow(2, -14), want: 0x0400, acc: big.Exact}, // 2^(-14)
+		{in: math.Pow(2, -13), want: 0x0800, acc: big.Exact}, // 2^(-13)
+		{in: math.Pow(2, -12), want: 0x0C00, acc: big.Exact}, // 2^(-12)
+		{in: math.Pow(2, -11), want: 0x1000, acc: big.Exact}, // 2^(-11)
+		{in: math.Pow(2, -10), want: 0x1400, acc: big.Exact}, // 2^(-10)
+		{in: math.Pow(2, -9), want: 0x1800, acc: big.Exact},  // 2^(-9)
+		{in: math.Pow(2, -8), want: 0x1C00, acc: big.Exact},  // 2^(-8)
+		{in: math.Pow(2, -7), want: 0x2000, acc: big.Exact},  // 2^(-7)
+		{in: math.Pow(2, -6), want: 0x2400, acc: big.Exact},  // 2^(-6)
+		{in: math.Pow(2, -5), want: 0x2800, acc: big.Exact},  // 2^(-5)
+		{in: math.Pow(2, -4), want: 0x2C00, acc: big.Exact},  // 2^(-4)
+		{in: math.Pow(2, -3), want: 0x3000, acc: big.Exact},  // 2^(-3)
+		{in: math.Pow(2, -2), want: 0x3400, acc: big.Exact},  // 2^(-2)
+		{in: math.Pow(2, -1), want: 0x3800, acc: big.Exact},  // 2^(-1)
+		{in: math.Pow(2, 0), want: 0x3C00, acc: big.Exact},   // 2^0
+		{in: math.Pow(2, 1), want: 0x4000, acc: big.Exact},   // 2^1
+		{in: math.Pow(2, 2), want: 0x4400, acc: big.Exact},   // 2^2
+		{in: math.Pow(2, 3), want: 0x4800, acc: big.Exact},   // 2^3
+		{in: math.Pow(2, 4), want: 0x4C00, acc: big.Exact},   // 2^4
+		{in: math.Pow(2, 5), want: 0x5000, acc: big.Exact},   // 2^5
+		{in: math.Pow(2, 6), want: 0x5400, acc: big.Exact},   // 2^6
+		{in: math.Pow(2, 7), want: 0x5800, acc: big.Exact},   // 2^7
+		{in: math.Pow(2, 8), want: 0x5C00, acc: big.Exact},   // 2^8
+		{in: math.Pow(2, 9), want: 0x6000, acc: big.Exact},   // 2^9
+		{in: math.Pow(2, 10), want: 0x6400, acc: big.Exact},  // 2^10
+		{in: math.Pow(2, 11), want: 0x6800, acc: big.Exact},  // 2^11
+		{in: math.Pow(2, 12), want: 0x6C00, acc: big.Exact},  // 2^12
+		{in: math.Pow(2, 13), want: 0x7000, acc: big.Exact},  // 2^13
+		{in: math.Pow(2, 14), want: 0x7400, acc: big.Exact},  // 2^14
+		{in: math.Pow(2, 15), want: 0x7800, acc: big.Exact},  // 2^15
+	}
 	for _, g := range golden {
-		f, _ := NewFromFloat64(math.Float64frombits(g.uint64Float))
-		a := f.Bits()
-		assert.Equal(t, g.a, a, g.str)
+		f, acc := NewFromFloat64(g.in)
+		got := f.Bits()
+		if g.want != got {
+			x, _ := f.Float64()
+			t.Errorf("bits mismatch; expected 0x%04X (%v), got 0x%04X (%v)", g.want, g.in, got, x)
+		}
+		if g.acc != acc {
+			x, _ := f.Float64()
+			t.Errorf("accuracy mismatch; expected %v (%v), got %v (%v)", g.acc, g.in, acc, x)
+		}
 	}
-}
-
-func float64FromString(s string) float64 {
-	x, _, err := big.ParseFloat(s, 0, 53, big.ToNearestEven)
-	if err != nil {
-		panic(err)
-	}
-	// TODO: Check accuracy?
-	y, _ := x.Float64()
-	return y
 }
