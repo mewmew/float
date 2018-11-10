@@ -1,3 +1,5 @@
+//go:generate go run gen.go -o extra_test.go
+
 // Package float80x86 implements encoding and decoding of x86 extended precision
 // floating-point numbers.
 //
@@ -136,8 +138,8 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 			mant.Neg(mant)
 		}
 		v, _ := mant.Uint64()
-		// TODO: calculate acc based on if v&^0x7FF != 0 {}
-		m |= uint64(v & 0x7FFFFFFFFFFFFFFF)
+		// TODO: calculate acc based on if v&^0x7FFFFFFFFFFFFFFF != 0 {}
+		m |= v & 0x7FFFFFFFFFFFFFFF
 		return Float{se: se, m: m}, acc
 	}
 
@@ -216,7 +218,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	// Normalized number.
 	//
 	//    (-1)^signbit * 2^(exp-16383) * 1.mant_2
-	exponent := int(exp) - bias
+	exponent := exp - bias
 
 	switch exp {
 	// 0b111111111111111

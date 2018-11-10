@@ -5,11 +5,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"html/template"
 	"log"
 	"math"
 	"math/big"
 	"os"
+	"text/template"
 
 	"github.com/pkg/errors"
 )

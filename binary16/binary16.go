@@ -199,7 +199,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	//
 	//    (-1)^signbit * 2^(exp-15) * 1.mant_2
 	lead := 1
-	exponent := int(exp) - bias
+	exponent := exp - bias
 
 	switch exp {
 	// 0b11111
