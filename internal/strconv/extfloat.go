@@ -145,7 +145,7 @@ func (f *extFloat) floatBits(flt *floatInfo) (bits uint64, overflow bool) {
 	mant := f.mant >> (63 - flt.mantbits)
 	if f.mant&(1<<(62-flt.mantbits)) != 0 {
 		// Round up.
-		mant += 1
+		mant++
 	}
 
 	// Rounding might have added a bit; shift down.
@@ -274,7 +274,7 @@ func (f *extFloat) AssignDecimal(mantissa uint64, exp10 int, neg bool, trunc boo
 	// We multiply by 10 to the exp - exp%step.
 	f.Multiply(powersOfTen[i])
 	if errors > 0 {
-		errors += 1
+		errors++
 	}
 	errors += errorscale / 2
 
@@ -298,13 +298,13 @@ func (f *extFloat) AssignDecimal(mantissa uint64, exp10 int, neg bool, trunc boo
 	}
 
 	halfway := uint64(1) << (extrabits - 1)
-	mant_extra := f.mant & (1<<extrabits - 1)
+	mantExtra := f.mant & (1<<extrabits - 1)
 
 	// Do a signed comparison here! If the error estimate could make
 	// the mantissa round differently for the conversion to double,
 	// then we can't give a definite answer.
-	if int64(halfway)-int64(errors) < int64(mant_extra) &&
-		int64(mant_extra) < int64(halfway)+int64(errors) {
+	if int64(halfway)-int64(errors) < int64(mantExtra) &&
+		int64(mantExtra) < int64(halfway)+int64(errors) {
 		return false
 	}
 	return true
