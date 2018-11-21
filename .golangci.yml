@@ -4,3 +4,4 @@ linters:
     - dupl
     - maligned
     - lll
+    - gochecknoglobals

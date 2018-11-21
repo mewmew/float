@@ -121,7 +121,7 @@ func rightShift(a *decimal, k uint) {
 				return
 			}
 			for n>>k == 0 {
-				n = n * 10
+				n *= 10
 				r++
 			}
 			break
@@ -153,7 +153,7 @@ func rightShift(a *decimal, k uint) {
 		} else if dig > 0 {
 			a.trunc = true
 		}
-		n = n * 10
+		n *= 10
 	}
 
 	a.nd = w
