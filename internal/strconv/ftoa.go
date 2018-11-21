@@ -13,7 +13,7 @@ package strconv
 import (
 	"math"
 
-	"github.com/mewmew/floats/binary16"
+	"github.com/mewmew/float/binary16"
 )
 
 var optimize = true // can change for testing
