@@ -81,12 +81,12 @@ const host32bit = ^uint(0)>>32 == 0
 const digits = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 // formatBits computes the string representation of u in the given base.
-// If neg is set, u is treated as negative int64 value. If append_ is
+// If neg is set, u is treated as negative int64 value. If doAppend is
 // set, the string is appended to dst and the resulting byte slice is
 // returned as the first result value; otherwise the string is returned
 // as the second result value.
 //
-func formatBits(dst []byte, u uint64, base int, neg, append_ bool) (d []byte, s string) {
+func formatBits(dst []byte, u uint64, base int, neg, doAppend bool) (d []byte, s string) {
 	if base < 2 || base > len(digits) {
 		panic("strconv: illegal AppendInt/FormatInt base")
 	}
@@ -193,7 +193,7 @@ func formatBits(dst []byte, u uint64, base int, neg, append_ bool) (d []byte, s 
 		a[i] = '-'
 	}
 
-	if append_ {
+	if doAppend {
 		d = append(dst, a[i:]...)
 		return
 	}
