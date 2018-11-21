@@ -20,6 +20,18 @@ const (
 	bias = 15
 )
 
+// Positive and negative not-a-number and infinity.
+var (
+	// +NaN
+	NaN = Float{bits: 0x7E00}
+	// -NaN
+	NegNaN = Float{bits: 0xFE00}
+	// +Inf
+	Inf = Float{bits: 0x7C00}
+	// -Inf
+	NegInf = Float{bits: 0xFC00}
+)
+
 // A Float is a floating-point number in IEEE 754 half precision format.
 type Float struct {
 	// Sign, exponent and fraction.
