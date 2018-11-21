@@ -10,7 +10,11 @@
 
 package strconv
 
-import "math"
+import (
+	"math"
+
+	"github.com/mewmew/floats/binary16"
+)
 
 var optimize = true // can change for testing
 
@@ -21,6 +25,7 @@ type floatInfo struct {
 	bias     int
 }
 
+var float16info = floatInfo{10, 5, -15}
 var float32info = floatInfo{23, 8, -127}
 var float64info = floatInfo{52, 11, -1023}
 
@@ -58,6 +63,11 @@ func genericFtoa(dst []byte, val float64, fmt byte, prec, bitSize int) []byte {
 	var bits uint64
 	var flt *floatInfo
 	switch bitSize {
+	case 16:
+		f, acc := binary16.NewFromFloat64(val)
+		_ = acc
+		bits = uint64(f.Bits())
+		flt = &float16info
 	case 32:
 		bits = uint64(math.Float32bits(float32(val)))
 		flt = &float32info
