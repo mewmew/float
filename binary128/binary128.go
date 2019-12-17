@@ -97,6 +97,8 @@ func NewFromFloat32(x float32) (f Float, exact bool) {
 // NewFromFloat64 returns the nearest quadruple precision floating-point number
 // for x and a bool indicating whether f represents x exactly.
 func NewFromFloat64(x float64) (f Float, exact bool) {
+	// TODO: add NewFromBig and implement NewFromFloat32 and NewFromFloat64 using
+	// NewFromBig. Look at binary16/binary16.go as reference.
 	intRep := math.Float64bits(x)
 	sign := intRep&0x8000000000000000 != 0
 	exp := intRep & 0x7FF0000000000000 >> 52
@@ -158,14 +160,36 @@ func (f Float) Bits() (a, b uint64) {
 	return f.a, f.b
 }
 
-// Float32 returns the float32 representation of f.
-func (f Float) Float32() float32 {
-	panic("not yet implemented")
+// Float32 returns the float32 value nearest to f. If f is too small to be
+// represented by a float32 (|f| < math.SmallestNonzeroFloat32), the result is
+// (0, Below) or (-0, Above), respectively, depending on the sign of f. If f is
+// too large to be represented by a float32 (|f| > math.MaxFloat32), the result
+// is (+Inf, Above) or (-Inf, Below), depending on the sign of f.
+func (f Float) Float32() (float32, big.Accuracy) {
+	x, nan := f.Big()
+	if nan {
+		if x.Signbit() {
+			return float32(-math.NaN()), big.Exact
+		}
+		return float32(math.NaN()), big.Exact
+	}
+	return x.Float32()
 }
 
-// Float64 returns the float64 representation of f.
-func (f Float) Float64() float64 {
-	panic("not yet implemented")
+// Float64 returns the float64 value nearest to f. If f is too small to be
+// represented by a float64 (|f| < math.SmallestNonzeroFloat64), the result is
+// (0, Below) or (-0, Above), respectively, depending on the sign of f. If f is
+// too large to be represented by a float64 (|f| > math.MaxFloat64), the result
+// is (+Inf, Above) or (-Inf, Below), depending on the sign of f.
+func (f Float) Float64() (float64, big.Accuracy) {
+	x, nan := f.Big()
+	if nan {
+		if x.Signbit() {
+			return -math.NaN(), big.Exact
+		}
+		return math.NaN(), big.Exact
+	}
+	return x.Float64()
 }
 
 // Big returns the multi-precision floating-point number representation of f and
