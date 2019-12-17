@@ -1,31 +1,26 @@
 language: go
 
 go:
-  - "1.10"
-  - "1.11"
-  - "tip"
+  - "1.12"
+  - tip
 
 notifications:
   email: false
 
 env:
   global:
+    # Coveralls.io token.
     - secure: "gIMQehPQgokFi1b2weJcxY3t5n17Idzr4ONULNylyERInyFg7RtuAPbqi1O2QXqroVDSI+lCYy/hmxvuHIlg0ps6lA4lUiDkr1ScC/p05vGTjEamlC2AacCbP1Oa8OSBhxsKwfu8Z713q/ppfvVlUrOpI9XS1pdQh6QAu3vdOpFPFEewbgQDUZj0K21raj8DROUFo0W548eHTj4CQbgSIkKtbysXrvwvR7fEvqzRnq/7HDqH+6JMahrHQRIrFIHdL8SZxtkKiR9/1QdmXVmY/ZjQUgKJWzGfFBPd5IfrrLNGupZIUFsOd5S2oUmFXiwYXdJ3HtyEJVHEM8M1UjJp/XLDmPFXeu4o1C3FpL8fOmFPda6iANUyMOGnquW+jPNNXAWfhMF06vjtPFDe5XpsemaXrwhmweMGsauBVWMfI9tGzbyko+bSYSlPjjGpcaEamGH1ioUULFMgtHz/cPm+mbvqqG/7Ccrhu8j1bLuZy3893IL/8miOmKrGu+8U6vUYO5PD+edCTx36uIR211mDzakchjttZkT7QR/Zox7QHW3GGvfpKeuPOCcFoG2ufEuRIWGNxH9c3hLfIq/xklLPIG+Oykuh7aNxGfplqaNVfRIdrwVis/BsW/N5Er7+qCePAvzxbIKfVcy77en20N5LUgdxe2CuuLOqRF5tXAqPzTE="
 
-before_install:
-  - go get -u golang.org/x/tools/cmd/cover
-  - go get -u golang.org/x/tools/cmd/goimports
-  - go get -u golang.org/x/lint/golint
-  - go get -u github.com/mattn/goveralls
-  - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
-
 install:
-  - go get -t -v ./...
+  - go get -t ./...
 
 before_script:
-  - wget https://gist.github.com/mewmew/379014c9a2e6885e238d/raw/goclean.sh
-  - chmod +x goclean.sh
+  - wget https://github.com/mewmew/ci/raw/master/get_tools.sh
+  - chmod +x get_tools.sh
+  - ./get_tools.sh
+  - wget https://github.com/mewmew/ci/raw/master/ci_checks.sh
+  - chmod +x ci_checks.sh
 
 script:
-  - ./goclean.sh
-  - golangci-lint run --enable-all
+  - ./ci_checks.sh
