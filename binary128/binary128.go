@@ -5,7 +5,17 @@
 package binary128
 
 import (
+	"fmt"
 	"math"
+	"math/big"
+)
+
+const (
+	// precision specifies the number of bits in the mantissa (including the
+	// implicit lead bit).
+	precision = 113
+	// exponent bias.
+	bias = 16383
 )
 
 // Float is a floating-point number in IEEE 754 quadruple precision format.
@@ -156,4 +166,80 @@ func (f Float) Float32() float32 {
 // Float64 returns the float64 representation of f.
 func (f Float) Float64() float64 {
 	panic("not yet implemented")
+}
+
+// Big returns the multi-precision floating-point number representation of f and
+// a boolean indicating whether f is Not-a-Number.
+func (f Float) Big() (x *big.Float, nan bool) {
+	signbit := f.Signbit()
+	exp := f.Exp()
+	frac1, frac2 := f.Frac()
+	x = big.NewFloat(0)
+	x.SetPrec(precision)
+	x.SetMode(big.ToNearestEven)
+
+	lead := 1
+	exponent := exp - bias
+
+	switch exp {
+	// 0b111111111111111
+	case 0x7FFF:
+		// Inf or NaN
+		if frac1 == 0 && frac2 == 0 {
+			// +-Inf
+			x.SetInf(signbit)
+			return x, false
+		}
+		// +-NaN
+		if signbit {
+			x.Neg(x)
+		}
+		return x, true
+	// 0b000000000000000
+	case 0x0000:
+		if frac1 == 0 && frac2 == 0 {
+			// +-Zero
+			if signbit {
+				x.Neg(x)
+			}
+			return x, false
+		}
+		// Denormalized number.
+		//
+		//    (-1)^signbit * 2^(-16382) * 0.mant_2
+		lead = 0
+		exponent = -16382
+	}
+
+	// number = [ sign ] [ prefix ] mantissa [ exponent ] | infinity .
+	sign := "+"
+	if signbit {
+		sign = "-"
+	}
+	// first part cut the sign and exponent which only contains 48 bits
+	fracStr := fmt.Sprintf("%048b%064b", frac1, frac2)
+	s := fmt.Sprintf("%s0b%d.%sp%d", sign, lead, fracStr, exponent)
+	if _, _, err := x.Parse(s, 0); err != nil {
+		panic(err)
+	}
+	return x, false
+}
+
+// Signbit reports whether f is negative or negative 0.
+func (f Float) Signbit() bool {
+	// 0b1000000000000000
+	// first bit is sign bit
+	return f.a&0x8000 != 0
+}
+
+// Exp returns the exponent of f.
+func (f Float) Exp() int {
+	return int(f.a & 0x7FFF)
+}
+
+// Frac returns the fraction of f.
+func (f Float) Frac() (uint64, uint64) {
+	// 0xFFFFFFFFFFFF remove the sign and exponent part(total 16 bits) from our floating-point number
+	// now we can say it contains 48 bits of fraction, and `f.b` part has the rest of fraction.
+	return (f.a & 0xFFFFFFFFFFFF), f.b
 }
