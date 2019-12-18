@@ -56,11 +56,12 @@ func TestNewFromFloat64Normalized(t *testing.T) {
 
 func TestNewFromFloat32Denormalized(t *testing.T) {
 	for _, g := range goldenDenormalized {
-		f, acc := NewFromFloat32(float32(g.want))
+		in := float32(g.want)
+		f, acc := NewFromFloat32(in)
 		_ = acc
 		got := f.Bits()
 		if g.bits != got {
-			t.Errorf("%v: bits mismatch; expected 0x%04X, got 0x%04X", g.want, g.bits, got)
+			t.Errorf("%v: bits mismatch; expected 0x%04X, got 0x%04X", in, g.bits, got)
 		}
 	}
 }
@@ -82,7 +83,7 @@ var goldenNormalized = []struct {
 }{
 	// Normalized values.
 	{{- range .normalized }}
-	{{ . }},
+	{{ . }}
 	{{- end }}
 }
 
@@ -92,6 +93,6 @@ var goldenDenormalized = []struct {
 }{
 	// Denormalized values.
 	{{- range .denormalized }}
-	{{ . }},
+	{{ . }}
 	{{- end }}
 }
