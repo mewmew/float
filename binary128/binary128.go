@@ -251,19 +251,19 @@ func (f Float) Big() (x *big.Float, nan bool) {
 
 // Signbit reports whether f is negative or negative 0.
 func (f Float) Signbit() bool {
-	// 0b1000000000000000
 	// first bit is sign bit
-	return f.a&0x8000 != 0
+	return f.a&0x8000000000000000 != 0
 }
 
 // Exp returns the exponent of f.
 func (f Float) Exp() int {
-	return int(f.a & 0x7FFF)
+	// 15 bit exponent
+	return int(f.a&0x7FFF000000000000) >> 48
 }
 
 // Frac returns the fraction of f.
 func (f Float) Frac() (uint64, uint64) {
 	// 0xFFFFFFFFFFFF remove the sign and exponent part(total 16 bits) from our floating-point number
 	// now we can say it contains 48 bits of fraction, and `f.b` part has the rest of fraction.
-	return (f.a & 0xFFFFFFFFFFFF), f.b
+	return (f.a & 0x0000FFFFFFFFFFFF), f.b
 }
