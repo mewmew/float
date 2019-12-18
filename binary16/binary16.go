@@ -108,7 +108,7 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	}
 
 	// Exponent and mantissa.
-	mant := &big.Float{}
+	mant := new(big.Float)
 	exponent := x.MantExp(mant)
 	// Remove 1 from the exponent as big.Float has an no lead bit.
 	exp := exponent - 1 + bias

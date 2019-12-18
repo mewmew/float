@@ -37,122 +37,133 @@ func NewFromBits(a, b uint64) Float {
 
 // NewFromFloat32 returns the nearest quadruple precision floating-point number
 // for x and a bool indicating whether f represents x exactly.
-func NewFromFloat32(x float32) (f Float, exact bool) {
-	intRep := math.Float32bits(x)
-	sign := intRep&0x80000000 != 0
-	mant := intRep & 0x7fffff
-	exp := intRep & 0x7f800000 >> 23
-
-	switch exp {
-	// 0b11111111
-	case 0xFF:
-		// NaN or Inf
-		var a uint64
-		if mant == 0 {
-			// +-Inf
-			a = 0x7FFF000000000000
-			if sign {
-				a = 0xFFFF000000000000
-			}
-			return Float{a: a, b: 0}, true
-		}
-		// +-NaN
-
-		a = 0
-		if sign {
-			a = 0x8000000000000000
-		}
-		a = a | 0x7FFF000000000000
-
-		newMant := uint64(mant) << uint64(25)
-		a = a | newMant
-
-		return Float{a: a, b: 0}, true
-		// 0b00000000
-	case 0x00:
-		if mant == 0 {
-			// +-Zero
-			var a uint64
-			if sign {
-				a = 0x8000000000000000
-			}
-			return Float{a: a, b: 0}, true
-		}
+func NewFromFloat32(x float32) (Float, big.Accuracy) {
+	f, acc := NewFromFloat64(float64(x))
+	if acc == big.Exact {
+		_, acc = f.Float32()
 	}
-
-	var a uint64
-	if sign {
-		a = 0x8000000000000000
-	}
-
-	newExp := uint64(exp-127+16383) << 48
-	a |= newExp
-
-	newMant := uint64(mant) << 25
-	a |= newMant
-
-	return Float{a: a, b: 0}, true
+	return f, acc
 }
 
 // NewFromFloat64 returns the nearest quadruple precision floating-point number
 // for x and a bool indicating whether f represents x exactly.
-func NewFromFloat64(x float64) (f Float, exact bool) {
-	// TODO: add NewFromBig and implement NewFromFloat32 and NewFromFloat64 using
-	// NewFromBig. Look at binary16/binary16.go as reference.
-	intRep := math.Float64bits(x)
-	sign := intRep&0x8000000000000000 != 0
-	exp := intRep & 0x7FF0000000000000 >> 52
-	mant := intRep & 0xFFFFFFFFFFFFF
-	leftMant := mant & 0xFFFFFFFFFFFF0 >> 4
-	var a uint64
-	b := mant & 0xF << 60
-
-	switch exp {
-	// 0b11111111
-	case 0x7FF:
-		// NaN or Inf
-		if mant == 0 {
-			// +-Inf
-			a = 0x7FFF000000000000
-			if sign {
-				a = 0xFFFF000000000000
-			}
-			return Float{a: a, b: b}, true
+func NewFromFloat64(x float64) (Float, big.Accuracy) {
+	// +-NaN
+	switch {
+	case math.IsNaN(x):
+		if math.Signbit(x) {
+			// -NaN
+			return Float{a: 0xFFFF800000000000, b: 0}, big.Exact
 		}
-		// +-NaN
+		// +NaN
+		return Float{a: 0x7FFF800000000000, b: 0}, big.Exact
+	}
+	y := big.NewFloat(x)
+	y.SetPrec(precision)
+	y.SetMode(big.ToNearestEven)
+	// TODO: check accuracy after setting precision?
+	return NewFromBig(y)
+}
 
-		a = 0
-		if sign {
-			a = 0x8000000000000000
+// NewFromBig returns the nearest quadruple precision floating-point number for
+// x and the accuracy of the conversion.
+func NewFromBig(x *big.Float) (Float, big.Accuracy) {
+	// +-Inf
+	zero := big.NewFloat(0).SetPrec(precision)
+	switch {
+	case x.IsInf():
+		if x.Signbit() {
+			// -Inf
+			return Float{a: 0xFFFF000000000000, b: 0}, big.Exact
 		}
-		a = a | 0x7FFF000000000000
-
-		newMant := leftMant
-		a |= newMant
-
-		return Float{a: a, b: b}, true
-		// 0b00000000
-	case 0x0:
-		if mant == 0 {
-			// +-Zero
-			var a uint64
-			if sign {
-				a = 0x8000000000000000
-			}
-			return Float{a: a, b: b}, true
+		// +Inf
+		return Float{a: 0x7FFF000000000000, b: 0}, big.Exact
+	// +-zero
+	case x.Cmp(zero) == 0:
+		if x.Signbit() {
+			// -zero
+			return Float{a: 0x8000000000000000, b: 0}, big.Exact
 		}
+		// +zero
+		return Float{a: 0x0000000000000000, b: 0}, big.Exact
 	}
 
-	if sign {
-		a = 0x8000000000000000
+	// Sign
+	var a, b uint64
+	if x.Signbit() {
+		a |= 0x8000000000000000
 	}
 
-	newExp := (exp - 1023 + 16383) << 48
-	a |= newExp
+	// Exponent and mantissa.
+	mant := new(big.Float).SetPrec(precision)
+	exponent := x.MantExp(mant)
+	// Remove 1 from the exponent as big.Float has an no lead bit.
+	exp := exponent - 1 + bias
 
-	a |= leftMant
+	// Handle denormalized values.
+	// TODO: validate implementation of denormalized values.
+	if exp <= 0 {
+		acc := big.Exact
+		if exp <= -(precision - 1) {
+			exp = precision - 1
+			acc = big.Below
+		}
+		mant.SetMantExp(mant, exp+precision-1)
+		if mant.Signbit() {
+			mant.Neg(mant)
+		}
+		mantissa, _ := mant.Int(nil)
+		maskA := big.NewInt(0)
+		for i := 64; i < 112; i++ {
+			maskA.SetBit(maskA, i, 1)
+		}
+		maskB := big.NewInt(0)
+		for i := 0; i < 64; i++ {
+			maskB.SetBit(maskB, i, 1)
+		}
+		bigA := new(big.Int).And(mantissa, maskA) // a = (mantissa & maskA) >> 64
+		bigA.Rsh(bigA, 64)
+		bigB := new(big.Int).And(mantissa, maskB) // b = mantissa & maskB
+		// TODO: calculate acc based on if mantissa&^maskA != 0 {}
+		a |= bigA.Uint64() & 0x0000FFFFFFFFFFFF
+		b = bigB.Uint64()
+		return Float{a: a, b: b}, acc
+	}
 
-	return Float{a: a, b: b}, true
+	// exponent mask (15 bits): 0b111111111111111
+	acc := big.Exact
+	if (exp &^ 0x7FFF) != 0 {
+		acc = big.Above
+	}
+	a |= uint64(exp&0x7FFF) << 48
+
+	if mant.Signbit() {
+		mant.Neg(mant)
+	}
+	mant.SetMantExp(mant, precision)
+	if !mant.IsInt() {
+		acc = big.Below
+	}
+	mantissa, _ := mant.Int(nil)
+	// mantissa mask (113 bits, including implicit lead bit): 0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFF
+	mantissa.SetBit(mantissa, 112, 0)
+	maskA := big.NewInt(0)
+	for i := 64; i < 112; i++ {
+		maskA.SetBit(maskA, i, 1)
+	}
+	maskB := big.NewInt(0)
+	for i := 0; i < 64; i++ {
+		maskB.SetBit(maskB, i, 1)
+	}
+	bigA := new(big.Int).And(mantissa, maskA) // a = (mantissa & maskA) >> 64
+	bigA.Rsh(bigA, 64)
+	bigB := new(big.Int).And(mantissa, maskB) // b = mantissa & maskB
+	if acc == big.Exact && (bigA.Uint64()&^0x0000FFFFFFFFFFFF) != 0 {
+		acc = big.Below
+	}
+	a |= bigA.Uint64() & 0x0000FFFFFFFFFFFF
+	b = bigB.Uint64()
+	return Float{a: a, b: b}, acc
 }
 
 // Bits returns the IEEE 754 quadruple precision binary representation of f.

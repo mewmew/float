@@ -223,12 +223,11 @@ func TestNewFromFloat64(t *testing.T) {
 	for _, g := range golden {
 		f, acc := NewFromFloat64(g.in)
 		got := f.Bits()
+		x, _ := f.Float64()
 		if g.want != got {
-			x, _ := f.Float64()
 			t.Errorf("bits mismatch; expected 0x%04X (%v), got 0x%04X (%v)", g.want, g.in, got, x)
 		}
 		if g.acc != acc {
-			x, _ := f.Float64()
 			t.Errorf("accuracy mismatch; expected %v (%v), got %v (%v)", g.acc, g.in, acc, x)
 		}
 	}
