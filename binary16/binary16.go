@@ -20,7 +20,7 @@ const (
 	bias = 15
 )
 
-// Positive and negative not-a-number and infinity.
+// Positive and negative Not-a-Number, infinity and zero.
 var (
 	// +NaN
 	NaN = Float{bits: 0x7E00}
@@ -30,9 +30,13 @@ var (
 	Inf = Float{bits: 0x7C00}
 	// -Inf
 	NegInf = Float{bits: 0xFC00}
+	// +zero
+	Zero = Float{bits: 0x0000}
+	// -zero
+	NegZero = Float{bits: 0x8000}
 )
 
-// A Float is a floating-point number in IEEE 754 half precision format.
+// Float is a floating-point number in IEEE 754 half precision format.
 type Float struct {
 	// Sign, exponent and fraction.
 	//
@@ -66,10 +70,10 @@ func NewFromFloat64(x float64) (Float, big.Accuracy) {
 	case math.IsNaN(x):
 		if math.Signbit(x) {
 			// -NaN
-			return Float{bits: 0xFE00}, big.Exact
+			return NegNaN, big.Exact
 		}
 		// +NaN
-		return Float{bits: 0x7E00}, big.Exact
+		return NaN, big.Exact
 	}
 	y := big.NewFloat(x)
 	y.SetPrec(precision)
@@ -87,18 +91,18 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	case x.IsInf():
 		if x.Signbit() {
 			// -Inf
-			return Float{bits: 0xFC00}, big.Exact
+			return NegInf, big.Exact
 		}
 		// +Inf
-		return Float{bits: 0x7C00}, big.Exact
+		return Inf, big.Exact
 	// +-zero
 	case x.Cmp(zero) == 0:
 		if x.Signbit() {
 			// -zero
-			return Float{bits: 0x8000}, big.Exact
+			return NegZero, big.Exact
 		}
 		// +zero
-		return Float{bits: 0x0000}, big.Exact
+		return Zero, big.Exact
 	}
 
 	// Sign
@@ -125,13 +129,13 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 		if mant.Signbit() {
 			mant.Neg(mant)
 		}
-		v, _ := mant.Uint64()
-		// TODO: calculate acc based on if v&^0x7FF != 0 {}
-		bits |= uint16(v & 0x7FF)
+		mantissa, _ := mant.Uint64()
+		// TODO: calculate acc based on if mantissa&^0x7FF != 0 {}
+		bits |= uint16(mantissa & 0x7FF)
 		return Float{bits: bits}, acc
 	}
 
-	// 0b11111
+	// exponent mask (5 bits): 0b11111
 	acc := big.Exact
 	if (exp &^ 0x1F) != 0 {
 		acc = big.Above
@@ -148,7 +152,7 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	mantissa, _ := mant.Uint64()
 	mantissa &^= 0x400 // clear implicit lead bit; 2^10
 
-	// 0b11111111111 (including implicit lead bit)
+	// mantissa mask (11 bits, including implicit lead bit): 0b11111111111
 	if acc == big.Exact && (mantissa&^0x7FF) != 0 {
 		acc = big.Below
 	}
@@ -257,18 +261,18 @@ func (f Float) Big() (x *big.Float, nan bool) {
 
 // Signbit reports whether f is negative or negative 0.
 func (f Float) Signbit() bool {
-	// 0b1000000000000000
+	// first bit is sign bit: 0b1000000000000000
 	return f.bits&0x8000 != 0
 }
 
 // Exp returns the exponent of f.
 func (f Float) Exp() int {
-	// 0b0111110000000000
+	// 5 bit exponent: 0b0111110000000000
 	return int(f.bits & 0x7C00 >> 10)
 }
 
 // Frac returns the fraction of f.
 func (f Float) Frac() uint16 {
-	// 0b0000001111111111
+	// 10 bit mantissa: 0b0000001111111111
 	return f.bits & 0x03FF
 }

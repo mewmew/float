@@ -1,3 +1,5 @@
+//go:generate go run gen.go -o extra_test.go
+
 // Package binary128 implements encoding and decoding of IEEE 754 quadruple
 // precision floating-point numbers.
 //
@@ -18,6 +20,22 @@ const (
 	bias = 16383
 )
 
+// Positive and negative Not-a-Number, infinity and zero.
+var (
+	// +NaN
+	NaN = Float{a: 0x7FFF800000000000, b: 0}
+	// -NaN
+	NegNaN = Float{a: 0xFFFF800000000000, b: 0}
+	// +Inf
+	Inf = Float{a: 0x7FFF000000000000, b: 0}
+	// -Inf
+	NegInf = Float{a: 0xFFFF000000000000, b: 0}
+	// +zero
+	Zero = Float{a: 0x0000000000000000, b: 0}
+	// -zero
+	NegZero = Float{a: 0x8000000000000000, b: 0}
+)
+
 // Float is a floating-point number in IEEE 754 quadruple precision format.
 type Float struct {
 	// Sign, exponent and fraction.
@@ -36,7 +54,7 @@ func NewFromBits(a, b uint64) Float {
 }
 
 // NewFromFloat32 returns the nearest quadruple precision floating-point number
-// for x and a bool indicating whether f represents x exactly.
+// for x and the accuracy of the conversion.
 func NewFromFloat32(x float32) (Float, big.Accuracy) {
 	f, acc := NewFromFloat64(float64(x))
 	if acc == big.Exact {
@@ -46,17 +64,17 @@ func NewFromFloat32(x float32) (Float, big.Accuracy) {
 }
 
 // NewFromFloat64 returns the nearest quadruple precision floating-point number
-// for x and a bool indicating whether f represents x exactly.
+// for x and the accuracy of the conversion.
 func NewFromFloat64(x float64) (Float, big.Accuracy) {
 	// +-NaN
 	switch {
 	case math.IsNaN(x):
 		if math.Signbit(x) {
 			// -NaN
-			return Float{a: 0xFFFF800000000000, b: 0}, big.Exact
+			return NegNaN, big.Exact
 		}
 		// +NaN
-		return Float{a: 0x7FFF800000000000, b: 0}, big.Exact
+		return NaN, big.Exact
 	}
 	y := big.NewFloat(x)
 	y.SetPrec(precision)
@@ -74,18 +92,18 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	case x.IsInf():
 		if x.Signbit() {
 			// -Inf
-			return Float{a: 0xFFFF000000000000, b: 0}, big.Exact
+			return NegInf, big.Exact
 		}
 		// +Inf
-		return Float{a: 0x7FFF000000000000, b: 0}, big.Exact
+		return Inf, big.Exact
 	// +-zero
 	case x.Cmp(zero) == 0:
 		if x.Signbit() {
 			// -zero
-			return Float{a: 0x8000000000000000, b: 0}, big.Exact
+			return NegZero, big.Exact
 		}
 		// +zero
-		return Float{a: 0x0000000000000000, b: 0}, big.Exact
+		return Zero, big.Exact
 	}
 
 	// Sign
@@ -145,8 +163,9 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 		acc = big.Below
 	}
 	mantissa, _ := mant.Int(nil)
+	mantissa.SetBit(mantissa, 112, 0) // clear implicit lead bit; 2^112
+
 	// mantissa mask (113 bits, including implicit lead bit): 0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFF
-	mantissa.SetBit(mantissa, 112, 0)
 	maskA := big.NewInt(0)
 	for i := 64; i < 112; i++ {
 		maskA.SetBit(maskA, i, 1)
@@ -274,7 +293,8 @@ func (f Float) Exp() int {
 
 // Frac returns the fraction of f.
 func (f Float) Frac() (uint64, uint64) {
-	// 0xFFFFFFFFFFFF remove the sign and exponent part(total 16 bits) from our floating-point number
-	// now we can say it contains 48 bits of fraction, and `f.b` part has the rest of fraction.
+	// 0x0000FFFFFFFFFFFF removes the sign and exponent part (total 16 bits) from
+	// our floating-point number. Now we can say it contains 48 bits of fraction,
+	// and `f.b` part has the rest of fraction.
 	return (f.a & 0x0000FFFFFFFFFFFF), f.b
 }
