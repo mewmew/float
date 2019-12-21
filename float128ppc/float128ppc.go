@@ -1,17 +1,23 @@
-// Package float128ppc implements encoding and decoding of IBM extended double
+// Package float128ppc implements encoding and decoding of double-double
 // floating-point numbers.
 //
-// https://en.wikipedia.org/wiki/IBM_Floating_Point_Architecture#Extended-precision_128-bit
+// https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format#Double-double_arithmetic
 package float128ppc
 
-// Float is a floating-point number in IBM extended double format.
+import (
+	"math"
+	"math/big"
+)
+
+const (
+	// precision specifies the number of bits in the mantissa (including the
+	// implicit lead bit).
+	precision = 106
+)
+
+// Float is a floating-point number in double-double format.
 type Float struct {
-	// Sign, exponent and fraction.
-	//
-	//    1 bit:    sign
-	//    7 bits:   exponent
-	//    112 bits: fraction
-	//    8 bits:   unused
+	// where a long double value is regarded as the exact sum of two double-precision values, giving at least a 106-bit precision
 	a uint64
 	b uint64
 }
@@ -47,4 +53,24 @@ func (f Float) Float32() float32 {
 // Float64 returns the float64 representation of f.
 func (f Float) Float64() float64 {
 	panic("not yet implemented")
+}
+
+// Big returns the multi-precision floating-point number representation of f and
+// a boolean indicating whether f is Not-a-Number.
+func (f Float) Big() (x *big.Float, nan bool) {
+	x = big.NewFloat(0)
+	x.SetPrec(precision)
+	x.SetMode(big.ToNearestEven)
+	a := math.Float64frombits(f.a)
+	if math.IsNaN(a) {
+		return x, true
+	}
+	b := math.Float64frombits(f.b)
+	if math.IsNaN(b) {
+		return x, true
+	}
+	h := big.NewFloat(a)
+	l := big.NewFloat(b)
+	x.Add(h, l)
+	return x, false
 }
