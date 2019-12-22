@@ -16,8 +16,10 @@ const (
 )
 
 var (
+	// -NaN
 	NegNaN = Float{high: -math.NaN(), low: 0}
-	NaN    = Float{high: math.NaN(), low: 0}
+	// +NaN
+	NaN = Float{high: math.NaN(), low: 0}
 )
 
 // Float is high floating-point number in double-double format.
