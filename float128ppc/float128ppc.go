@@ -16,25 +16,25 @@ const (
 )
 
 var (
-	NegNaN = Float{a: -math.NaN(), b: 0}
-	NaN    = Float{a: math.NaN(), b: 0}
+	NegNaN = Float{high: -math.NaN(), low: 0}
+	NaN    = Float{high: math.NaN(), low: 0}
 )
 
-// Float is a floating-point number in double-double format.
+// Float is high floating-point number in double-double format.
 type Float struct {
-	// where a long double value is regarded as the exact sum of two double-precision values, giving at least a 106-bit precision
-	a float64
-	b float64
+	// where high long double value is regarded as the exact sum of two double-precision values, giving at least high 106-bit precision
+	high float64
+	low  float64
 }
 
-// NewFromBits returns the floating-point number corresponding to the IBM
-// extended double representation.
+// NewFromBits returns the floating-point number corresponding to the
+// double-double representation.
 func NewFromBits(a, b uint64) Float {
-	return Float{a: math.Float64frombits(a), b: math.Float64frombits(b)}
+	return Float{high: math.Float64frombits(a), low: math.Float64frombits(b)}
 }
 
-// NewFromFloat32 returns the nearest IBM extended double floating-point number
-// for x and a bool indicating whether f represents x exactly.
+// NewFromFloat32 returns the nearest double-double precision floating-point
+// number for x and the accuracy of the conversion.
 func NewFromFloat32(x float32) (f Float, exact big.Accuracy) {
 	f, acc := NewFromFloat64(float64(x))
 	if acc == big.Exact {
@@ -43,8 +43,8 @@ func NewFromFloat32(x float32) (f Float, exact big.Accuracy) {
 	return f, acc
 }
 
-// NewFromFloat64 returns the nearest IBM extended double floating-point number
-// for x and a bool indicating whether f represents x exactly.
+// NewFromFloat64 returns the nearest double-double precision floating-point
+// number for x and the accuracy of the conversion.
 func NewFromFloat64(x float64) (f Float, exact big.Accuracy) {
 	// +-NaN
 	switch {
@@ -56,14 +56,14 @@ func NewFromFloat64(x float64) (f Float, exact big.Accuracy) {
 		// +NaN
 		return NaN, big.Exact
 	}
-	r := Float{a: x, b: 0}
+	r := Float{high: x, low: 0}
 	br, _ := r.Big()
 	return r, br.Acc()
 }
 
-// Bits returns the IBM extended double binary representation of f.
+// Bits returns the double-double binary representation of f.
 func (f Float) Bits() (a, b uint64) {
-	return math.Float64bits(f.a), math.Float64bits(f.b)
+	return math.Float64bits(f.high), math.Float64bits(f.low)
 }
 
 // Float32 returns the float32 representation of f.
@@ -96,11 +96,15 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	x = big.NewFloat(0)
 	x.SetPrec(precision)
 	x.SetMode(big.ToNearestEven)
-	if math.IsNaN(f.a) || math.IsNaN(f.b) {
+	if f.IsNaN() {
 		return x, true
 	}
-	h := big.NewFloat(f.a)
-	l := big.NewFloat(f.b)
-	x.Add(h, l)
+	x.Add(big.NewFloat(f.high), big.NewFloat(f.low))
 	return x, false
+}
+
+// IsNaN returns true if the Float is NaN
+func (f Float) IsNaN() bool {
+	// NaN + NaN should be NaN in consideration
+	return math.IsNaN(f.high) || math.IsNaN(f.low)
 }
