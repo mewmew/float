@@ -22,9 +22,9 @@ var (
 	NaN = Float{high: math.NaN(), low: 0}
 )
 
-// Float is high floating-point number in double-double format.
+// Float is a floating-point number in double-double format.
 type Float struct {
-	// where high long double value is regarded as the exact sum of two double-precision values, giving at least high 106-bit precision
+	// where a long double value is regarded as the exact sum of two double-precision values, giving at least a 106-bit precision
 	high float64
 	low  float64
 }
