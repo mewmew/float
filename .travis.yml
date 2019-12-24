@@ -19,8 +19,8 @@ before_script:
   - wget https://github.com/mewmew/ci/raw/master/get_tools.sh
   - chmod +x get_tools.sh
   - ./get_tools.sh
-  - wget https://github.com/mewmew/ci/raw/master/ci_checks.sh
+  - wget https://github.com/pwaller/ci/raw/pwaller-patch-1/ci_checks.sh
   - chmod +x ci_checks.sh
 
 script:
-  - ./ci_checks.sh
+  - GOTEST_RACE=0 ./ci_checks.sh
