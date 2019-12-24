@@ -15,11 +15,12 @@ const (
 	precision = 106
 )
 
+// Positive and negative Not-a-Number, infinity and zero.
 var (
-	// -NaN
-	NegNaN = Float{high: -math.NaN(), low: 0}
 	// +NaN
 	NaN = Float{high: math.NaN(), low: 0}
+	// -NaN
+	NegNaN = Float{high: -math.NaN(), low: 0}
 )
 
 // Float is a floating-point number in double-double format.
