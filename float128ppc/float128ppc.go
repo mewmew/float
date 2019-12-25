@@ -21,6 +21,14 @@ var (
 	NaN = Float{high: math.NaN(), low: 0}
 	// -NaN
 	NegNaN = Float{high: -math.NaN(), low: 0}
+	// +Inf
+	Inf = Float{high: math.Inf(1), low: 0}
+	// -Inf
+	NegInf = Float{high: -math.Inf(-1), low: 0}
+	// +zero
+	Zero = Float{high: 0, low: 0}
+	// -zero
+	NegZero = Float{high: math.Copysign(0, -1), low: 0}
 )
 
 // Float is a floating-point number in double-double format.
@@ -62,6 +70,42 @@ func NewFromFloat64(x float64) (f Float, exact big.Accuracy) {
 	r := Float{high: x, low: 0}
 	br, _ := r.Big()
 	return r, br.Acc()
+}
+
+// NewFromBig returns the nearest double-double floating-point number for x and
+// the accuracy of the conversion.
+func NewFromBig(x *big.Float) (Float, big.Accuracy) {
+	// +-Inf
+	zero := big.NewFloat(0).SetPrec(precision)
+	switch {
+	case x.IsInf():
+		if x.Signbit() {
+			// -Inf
+			return NegInf, big.Exact
+		}
+		// +Inf
+		return Inf, big.Exact
+	// +-zero
+	case x.Cmp(zero) == 0:
+		if x.Signbit() {
+			// -zero
+			return NegZero, big.Exact
+		}
+		// +zero
+		return Zero, big.Exact
+	}
+
+	high, acc := x.Float64()
+	// TODO: figure out how to implement NewFromBig in a good way. Currently all
+	// added precision of low is lost. A proper implementation would store half of
+	// the mantissa in high and half in low, adjusting the exponent such that
+	//
+	//    high + low = f
+	//
+	// and
+	//
+	//    |high| >= |low|
+	return Float{high: high, low: 0}, acc
 }
 
 // Bits returns the double-double binary representation of f.
