@@ -20,7 +20,23 @@ const (
 	bias = 16383
 )
 
-// A Float is a floating-point number in x86 extended precision format.
+// Positive and negative Not-a-Number, infinity and zero.
+var (
+	// +NaN
+	NaN = Float{se: 0x7FFF, m: 0xBFFFFFFFFFFFFFFF}
+	// -NaN
+	NegNaN = Float{se: 0xFFFF, m: 0xBFFFFFFFFFFFFFFF}
+	// +Inf
+	Inf = Float{se: 0x7FFF, m: 0x8000000000000000}
+	// -Inf
+	NegInf = Float{se: 0xFFFF, m: 0x8000000000000000}
+	// +zero
+	Zero = Float{se: 0x0000, m: 0x0000000000000000}
+	// -zero
+	NegZero = Float{se: 0x8000, m: 0x0000000000000000}
+)
+
+// Float is a floating-point number in x86 extended precision format.
 type Float struct {
 	// Sign and exponent.
 	//
@@ -35,7 +51,7 @@ type Float struct {
 }
 
 // NewFromBits returns the floating-point number corresponding to the x86
-// extended precision binary representation.
+// extended precision representation.
 func NewFromBits(se uint16, m uint64) Float {
 	return Float{se: se, m: m}
 }
@@ -61,13 +77,13 @@ func NewFromFloat64(x float64) (Float, big.Accuracy) {
 			//    sign: 1
 			//    exp:  all ones
 			//    mant: 10 non-zero
-			return Float{se: 0xFFFF, m: 0xBFFFFFFFFFFFFFFF}, big.Exact
+			return NegNaN, big.Exact
 		}
 		// +NaN
 		//    sign: 0
 		//    exp:  all ones
 		//    mant: 10 non-zero
-		return Float{se: 0x7FFF, m: 0xBFFFFFFFFFFFFFFF}, big.Exact
+		return NaN, big.Exact
 	}
 	y := big.NewFloat(x)
 	y.SetPrec(precision)
@@ -88,13 +104,13 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 			//    sign: 1
 			//    exp:  all ones
 			//    mant: 10 zero
-			return Float{se: 0xFFFF, m: 0x8000000000000000}, big.Exact
+			return NegInf, big.Exact
 		}
 		// +Inf
 		//    sign: 0
 		//    exp:  all ones
 		//    mant: 10 zero
-		return Float{se: 0x7FFF, m: 0x8000000000000000}, big.Exact
+		return Inf, big.Exact
 	// +-zero
 	case x.Cmp(zero) == 0:
 		if x.Signbit() {
@@ -102,13 +118,13 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 			//    sign: 1
 			//    exp:  zero
 			//    mant: zero
-			return Float{se: 0x8000, m: 0x0000000000000000}, big.Exact
+			return NegZero, big.Exact
 		}
 		// +zero
 		//    sign: 0
 		//    exp:  zero
 		//    mant: zero
-		return Float{se: 0x0000, m: 0x0000000000000000}, big.Exact
+		return Zero, big.Exact
 	}
 
 	// Sign
