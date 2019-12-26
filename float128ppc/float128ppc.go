@@ -104,26 +104,19 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	x.SetPrec(precision).SetMode(big.ToNearestEven)
 
 	// get high part of the double-double floating-point value.
-	high, acc := x.Float64()
-	_ = acc
+	high, _ := x.Float64()
 	h := big.NewFloat(high).SetPrec(precision).SetMode(big.ToNearestEven)
 
 	// compute low part by subtracting high from x.
 	l := big.NewFloat(0).SetPrec(precision).SetMode(big.ToNearestEven)
 	l.Sub(x, h)
+	low, _ := l.Float64()
 
-	low, acc := l.Float64()
-	_ = acc
+	// check accuracy of results.
+	result := big.NewFloat(0).SetPrec(precision).SetMode(big.ToNearestEven)
+	result.Add(h, l)
+	acc := big.Accuracy(x.Cmp(result))
 
-	// TODO: figure out how to implement NewFromBig in a good way. Currently all
-	// added precision of low is lost. A proper implementation would store half of
-	// the mantissa in high and half in low, adjusting the exponent such that
-	//
-	//    high + low = f
-	//
-	// and
-	//
-	//    |high| >= |low|
 	return Float{high: high, low: low}, acc
 }
 

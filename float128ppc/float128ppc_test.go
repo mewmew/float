@@ -1,6 +1,7 @@
 package float128ppc
 
 import (
+	"math/big"
 	"testing"
 )
 
@@ -25,9 +26,9 @@ func TestRoundTrip(t *testing.T) {
 	}
 	for _, g := range golden {
 		f1 := NewFromBits(g.h, g.l)
-		big, nan := f1.Big()
+		fbig, nan := f1.Big()
 		_ = nan
-		f2, acc := NewFromBig(big)
+		f2, acc := NewFromBig(fbig)
 		_ = acc
 		h, l := f2.Bits()
 		if g.h != h {
@@ -35,6 +36,9 @@ func TestRoundTrip(t *testing.T) {
 		}
 		if g.l != l {
 			t.Errorf("0xM%016X%016X; low mismatch; expected 0x%016X, got 0x%016X", g.h, g.l, g.l, l)
+		}
+		if acc != big.Exact {
+			t.Errorf("0xM%016X%016X; round-trip result accuracy inexact; expected %v, got %v", g.h, g.l, big.Exact, acc)
 		}
 	}
 }
