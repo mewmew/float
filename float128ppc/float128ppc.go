@@ -51,7 +51,7 @@ func NewFromBits(a, b uint64) Float {
 
 // NewFromFloat32 returns the nearest double-double precision floating-point
 // number for x and the accuracy of the conversion.
-func NewFromFloat32(x float32) (f Float, exact big.Accuracy) {
+func NewFromFloat32(x float32) (Float, big.Accuracy) {
 	f, acc := NewFromFloat64(float64(x))
 	if acc == big.Exact {
 		_, acc = f.Float32()
@@ -61,7 +61,7 @@ func NewFromFloat32(x float32) (f Float, exact big.Accuracy) {
 
 // NewFromFloat64 returns the nearest double-double precision floating-point
 // number for x and the accuracy of the conversion.
-func NewFromFloat64(x float64) (f Float, exact big.Accuracy) {
+func NewFromFloat64(x float64) (Float, big.Accuracy) {
 	// +-NaN
 	switch {
 	case math.IsNaN(x):
@@ -159,6 +159,15 @@ func (f Float) Big() (x *big.Float, nan bool) {
 		return x, true
 	}
 	x.Add(big.NewFloat(f.high), big.NewFloat(f.low))
+
+	zero := big.NewFloat(0).SetPrec(precision)
+	if x.Cmp(zero) == 0 && math.Signbit(f.high) {
+		// -zero
+		if !x.Signbit() {
+			x.Neg(x)
+		}
+	}
+
 	return x, false
 }
 
