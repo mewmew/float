@@ -5,7 +5,7 @@ import (
 )
 
 func TestRoundTrip(t *testing.T) {
-	golden := []struct{
+	golden := []struct {
 		h, l uint64
 	}{
 		{h: 0x0000000000000000, l: 0x0000000000000000}, // "0xM00000000000000000000000000000000"

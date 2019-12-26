@@ -41,7 +41,12 @@ type Float struct {
 // NewFromBits returns the floating-point number corresponding to the
 // double-double representation.
 func NewFromBits(a, b uint64) Float {
-	return Float{high: math.Float64frombits(a), low: math.Float64frombits(b)}
+	high := math.Float64frombits(a)
+	low := math.Float64frombits(b)
+	return Float{
+		high: high,
+		low:  low,
+	}
 }
 
 // NewFromFloat32 returns the nearest double-double precision floating-point
@@ -95,7 +100,21 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 		return Zero, big.Exact
 	}
 
+	// set precision of x.
+	x.SetPrec(precision).SetMode(big.ToNearestEven)
+
+	// get high part of the double-double floating-point value.
 	high, acc := x.Float64()
+	_ = acc
+	h := big.NewFloat(high).SetPrec(precision).SetMode(big.ToNearestEven)
+
+	// compute low part by subtracting high from x.
+	l := big.NewFloat(0).SetPrec(precision).SetMode(big.ToNearestEven)
+	l.Sub(x, h)
+
+	low, acc := l.Float64()
+	_ = acc
+
 	// TODO: figure out how to implement NewFromBig in a good way. Currently all
 	// added precision of low is lost. A proper implementation would store half of
 	// the mantissa in high and half in low, adjusting the exponent such that
@@ -105,7 +124,7 @@ func NewFromBig(x *big.Float) (Float, big.Accuracy) {
 	// and
 	//
 	//    |high| >= |low|
-	return Float{high: high, low: 0}, acc
+	return Float{high: high, low: low}, acc
 }
 
 // Bits returns the double-double binary representation of f.
