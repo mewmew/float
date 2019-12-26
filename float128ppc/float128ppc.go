@@ -158,7 +158,9 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	if f.IsNaN() {
 		return x, true
 	}
-	x.Add(big.NewFloat(f.high), big.NewFloat(f.low))
+	h := big.NewFloat(f.high).SetPrec(precision)
+	l := big.NewFloat(f.low).SetPrec(precision)
+	x.Add(h, l)
 
 	zero := big.NewFloat(0).SetPrec(precision)
 	if x.Cmp(zero) == 0 && math.Signbit(f.high) {
