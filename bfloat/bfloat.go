@@ -5,7 +5,6 @@ import (
 	"math/big"
 )
 
-
 const (
 	// precision specifies the number of bits in the mantissa (including the
 	// implicit lead bit).
@@ -37,7 +36,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	x.SetPrec(precision)
 	x.SetMode(big.ToNearestEven)
 
-	// ref: https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Exponent_encoding
+	// ref: https://en.wikipedia.org/wiki/Bfloat16_floating-point_format#Contrast_with_bfloat16_and_single_precision
 	//
 	// 0b00001 - 0b11110
 	// Normalized number.
@@ -83,7 +82,7 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	if _, _, err := x.Parse(s, 0); err != nil {
 		panic(err)
 	}
-	return x,false
+	return x, false
 }
 
 // Signbit reports whether f is negative or negative 0.
