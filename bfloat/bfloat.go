@@ -31,7 +31,6 @@ func (f Float) Big() (x *big.Float, nan bool) {
 	signbit := f.Signbit()
 	exp := f.Exp()
 	frac := f.Frac()
-
 	x = big.NewFloat(0)
 	x.SetPrec(precision)
 	x.SetMode(big.ToNearestEven)
@@ -94,7 +93,7 @@ func (f Float) Signbit() bool {
 // Exp returns the exponent of f.
 func (f Float) Exp() int {
 	// 8 bit exponent: 0b0111111110000000
-	return int(f.bits & 0x7F80 >> 10)
+	return int(f.bits & 0x7F80 >> 7)
 }
 
 // Frac returns the fraction of f.
